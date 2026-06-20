@@ -1,60 +1,64 @@
-name: Build APK
+name: Build Android APK
 
 on:
   push:
-  workflow_dispatch:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-22.04
+
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-      
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk python3-pip git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev cmake libffi-dev libssl-dev openssl
-      
-      - name: Install Buildozer
-        run: |
-          pip3 install --upgrade pip
-          pip3 install buildozer cython
-      
-      - name: Build APK
-        run: |
-          cat > buildozer.spec << 'EOF'
-          [app]
-          title = فروش و ویزیت
-          package.name = salesmanagement
-          package.domain = org.salesmanagement
-          source.dir = .
-          source.include_exts = py,png,jpg,kv,atlas,ttf,json,db
-          version = 1.0
-          requirements = hostpython3==3.10.0,python3==3.10.0,kivy==2.1.0,kivymd==1.0.2,openpyxl,jdatetime,arabic-reshaper,python-bidi,reportlab,plyer
-          orientation = portrait
-          fullscreen = 0
-          android.api = 30
-          android.minapi = 21
-          android.sdk = 30
-          android.ndk = 25b
-          android.archs = armeabi-v7a
-          android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
-          android.enable_androidx = True
-          android.allow_backup = True
-          [buildozer]
-          log_level = 2
-          warn_on_root = 1
-          EOF
-          yes | buildozer android debug
-        timeout-minutes: 60
-      
-      - uses: actions/upload-artifact@v4
-        with:
-          name: App
-          path: bin/*.apk
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq \
+          build-essential git zip unzip \
+          autoconf libtool \
+          pkg-config zlib1g-dev libncurses5-dev \
+          libncursesw5-dev libtinfo5 cmake \
+          libffi-dev libssl-dev wget \
+          ccache
+
+    - name: Install Python packages
+      run: |
+        pip install -q buildozer cython==0.29.37
+
+    # 🔥 بخش اصلی و جدید برای حل مشکل Clang
+    - name: Set GCC as default compiler
+      run: |
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc 100
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++ 100
+        echo "CC=gcc" >> $GITHUB_ENV
+        echo "CXX=g++" >> $GITHUB_ENV
+        echo "LD=g++" >> $GITHUB_ENV
+
+    - name: Build with Buildozer
+      run: |
+        echo "y" | buildozer -v android debug
+      env:
+        CC: gcc
+        CXX: g++
+        LD: g++
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app
+        path: bin/*.apk
