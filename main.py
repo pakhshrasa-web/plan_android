@@ -1,5 +1,5 @@
 """
-اپلیکیشن مدیریت ویزیت و فروش - نسخه کامل با سیستم لاگ‌گیری
+اپلیکیشن مدیریت ویزیت و فروش - نسخه نهایی با نمایش خطا به صورت پاپ‌آپ
 """
 
 # ========== تنظیم فونت و مسیرها (اصلاح شده برای اندروید) ==========
@@ -7,7 +7,6 @@ import os
 import json
 import sys
 import traceback
-from datetime import datetime
 from kivy.config import Config
 from kivy.core.text import LabelBase
 from kivy.app import App
@@ -21,108 +20,120 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.popup import Popup
 from kivy.graphics import Color, Rectangle
 from kivy.utils import platform
+from kivy.clock import Clock
 
-# ========== سیستم لاگ‌گیری ==========
-class Logger:
-    """سیستم لاگ‌گیری پیشرفته برای ذخیره خطاها و رویدادها"""
+# ========== سیستم نمایش خطا (پاپ‌آپ با قابلیت کپی) ==========
+class ErrorPopup:
+    """نمایش خطا به صورت پنجره بازشو با قابلیت کپی متن"""
     
-    _instance = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(Logger, cls).__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
-    
-    def __init__(self):
-        if self._initialized:
-            return
-        self._initialized = True
-        self.log_file = None
-        self.setup_log_file()
-    
-    def setup_log_file(self):
-        """تنظیم مسیر فایل لاگ"""
+    @staticmethod
+    def show_error(error_message, error_details=""):
         try:
-            from utils.storage import get_data_path
-            data_path = get_data_path()
-            self.log_dir = os.path.join(data_path, 'logs')
-            os.makedirs(self.log_dir, exist_ok=True)
+            # ساخت محتوای پاپ‌آپ
+            content = BoxLayout(orientation='vertical', padding=20, spacing=15)
             
-            # نام فایل لاگ بر اساس تاریخ
-            today = datetime.now().strftime('%Y-%m-%d')
-            self.log_file = os.path.join(self.log_dir, f'app_log_{today}.txt')
+            # عنوان خطا
+            title_label = Label(text="[b][color=ff3333]⚠️ خطا در برنامه[/color][/b]", 
+                               markup=True, size_hint_y=None, height=50, font_size='18sp')
+            content.add_widget(title_label)
             
-            # نوشتن هدر در فایل لاگ
-            if not os.path.exists(self.log_file):
-                with open(self.log_file, 'w', encoding='utf-8') as f:
-                    f.write(f"{'='*60}\n")
-                    f.write(f"برنامه مدیریت ویزیت - لاگ شروع\n")
-                    f.write(f"تاریخ: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                    f.write(f"{'='*60}\n\n")
+            # پیام خطا
+            msg_label = Label(text=f"[b]خطا:[/b] {error_message}", 
+                             markup=True, size_hint_y=None, height=60, text_size=(400, None), halign='left')
+            content.add_widget(msg_label)
+            
+            # جزئیات خطا (قابل کپی)
+            if error_details:
+                detail_label = Label(text=f"[b]جزئیات:[/b]\n{error_details}", 
+                                     markup=True, size_hint_y=None, height=300, 
+                                     text_size=(400, None), halign='left', font_size='12sp')
+                # اضافه کردن اسکرول برای جزئیات طولانی
+                scroll = ScrollView(size_hint_y=None, height=300)
+                scroll.add_widget(detail_label)
+                content.add_widget(scroll)
+            else:
+                # اگر جزئیات نبود، یک Label خالی برای فاصله
+                content.add_widget(Label(text="", size_hint_y=None, height=20))
+            
+            # دکمه کپی و بستن
+            btn_layout = BoxLayout(size_hint_y=None, height=50, spacing=10)
+            
+            copy_btn = Button(text='📋 کپی متن خطا', background_color=(0.2, 0.4, 0.8, 1))
+            close_btn = Button(text='✖ بستن', background_color=(0.8, 0.2, 0.2, 1))
+            
+            btn_layout.add_widget(copy_btn)
+            btn_layout.add_widget(close_btn)
+            content.add_widget(btn_layout)
+            
+            # ایجاد پاپ‌آپ
+            popup = Popup(title='[b]گزارش خطا[/b]', 
+                          content=content, 
+                          size_hint=(0.92, 0.75),
+                          auto_dismiss=False,
+                          markup=True)
+            
+            # تابع کپی کردن متن
+            def copy_error(instance):
+                full_text = f"خطا: {error_message}\n\nجزئیات:\n{error_details}"
+                # تلاش برای کپی در کلیپ‌بورد
+                try:
+                    from kivy.core.clipboard import Clipboard
+                    Clipboard.copy(full_text)
+                    # نمایش پیام کوتاه
+                    copy_btn.text = '✅ کپی شد!'
+                    Clock.schedule_once(lambda dt: setattr(copy_btn, 'text', '📋 کپی متن خطا'), 2)
+                except:
+                    # اگر کلیپ‌بورد کار نکرد، به کاربر بگو خودش کپی کنه
+                    copy_btn.text = '⚠️ دستی کپی کن'
+            
+            # تابع بستن
+            def close_popup(instance):
+                popup.dismiss()
+            
+            copy_btn.bind(on_press=copy_error)
+            close_btn.bind(on_press=close_popup)
+            
+            popup.open()
+            
+            # همچنین خطا رو توی کنسول چاپ کن (برای زمانی که از طریق ADB وصل میشی)
+            print("="*60)
+            print(f"❌ خطا: {error_message}")
+            print(f"📋 جزئیات:\n{error_details}")
+            print("="*60)
+            
+            # تلاش برای ذخیره در فایل (به عنوان پشتیبان)
+            try:
+                from utils.storage import get_data_path
+                data_path = get_data_path()
+                log_dir = os.path.join(data_path, 'logs')
+                os.makedirs(log_dir, exist_ok=True)
+                log_file = os.path.join(log_dir, 'crash_report.txt')
+                with open(log_file, 'w', encoding='utf-8') as f:
+                    f.write(f"خطا: {error_message}\n\n")
+                    f.write(f"جزئیات:\n{error_details}\n")
+                    f.write("="*60 + "\n")
+            except:
+                # اگر نتوانست در مسیر برنامه ذخیره کنه، در حافظه داخلی ذخیره کن
+                try:
+                    with open('/sdcard/planandroid_error.txt', 'w', encoding='utf-8') as f:
+                        f.write(f"خطا: {error_message}\n\n")
+                        f.write(f"جزئیات:\n{error_details}\n")
+                except:
+                    pass
+                    
         except Exception as e:
-            # اگر نتوانست مسیر را پیدا کند، از مسیر پیش‌فرض استفاده کن
-            self.log_dir = os.path.join(os.getcwd(), 'logs')
-            os.makedirs(self.log_dir, exist_ok=True)
-            today = datetime.now().strftime('%Y-%m-%d')
-            self.log_file = os.path.join(self.log_dir, f'app_log_{today}.txt')
-    
-    def log(self, level, message, exception=None):
-        """ثبت پیام در فایل لاگ"""
-        try:
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            log_entry = f"[{timestamp}] [{level}] {message}"
-            
-            if exception:
-                log_entry += f"\n    Exception: {str(exception)}"
-                log_entry += f"\n    Traceback:\n{traceback.format_exc()}"
-            
-            # چاپ در کنسول (برای دیباگ)
-            print(log_entry)
-            
-            # ذخیره در فایل
-            if self.log_file:
-                with open(self.log_file, 'a', encoding='utf-8') as f:
-                    f.write(log_entry + '\n')
-                    if exception:
-                        f.write('-'*40 + '\n')
-        except Exception as e:
-            print(f"خطا در سیستم لاگ‌گیری: {e}")
-    
-    def info(self, message):
-        """ثبت پیام اطلاعاتی"""
-        self.log('INFO', message)
-    
-    def warning(self, message):
-        """ثبت پیام هشدار"""
-        self.log('WARNING', message)
-    
-    def error(self, message, exception=None):
-        """ثبت پیام خطا"""
-        self.log('ERROR', message, exception)
-    
-    def debug(self, message):
-        """ثبت پیام دیباگ"""
-        self.log('DEBUG', message)
-    
-    def get_log_file_path(self):
-        """دریافت مسیر فایل لاگ"""
-        return self.log_file
-    
-    def get_log_content(self, lines=100):
-        """دریافت آخرین خطوط لاگ"""
-        try:
-            if not self.log_file or not os.path.exists(self.log_file):
-                return "فایل لاگ وجود ندارد"
-            
-            with open(self.log_file, 'r', encoding='utf-8') as f:
-                all_lines = f.readlines()
-                return ''.join(all_lines[-lines:])
-        except Exception as e:
-            return f"خطا در خواندن لاگ: {e}"
+            # اگر خود پاپ‌آپ هم خطا داد، توی کنسول چاپ کن
+            print(f"❌ خطا در نمایش پاپ‌آپ: {e}")
 
-# ایجاد نمونه سراسری از لاگر
-logger = Logger()
+# ========== هندلر سراسری خطا ==========
+def global_exception_handler(exc_type, exc_value, exc_tb):
+    """گرفتن تمام خطاهای ثبت نشده و نمایش آنها"""
+    error_msg = str(exc_value)
+    error_details = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    ErrorPopup.show_error(error_msg, error_details)
+
+# تنظیم هندلر سراسری
+sys.excepthook = global_exception_handler
 
 # ========== مدیریت مسیرها و فونت ==========
 def get_app_root():
@@ -159,21 +170,19 @@ if font_path:
     try:
         LabelBase.register(name='Vazirmatn', fn_regular=font_path)
         Config.set('kivy', 'default_font', ['Vazirmatn'])
-        logger.info(f"فونت با موفقیت از مسیر {font_path} بارگذاری شد")
+        print(f"✅ فونت با موفقیت از مسیر {font_path} بارگذاری شد")
     except Exception as e:
-        logger.error("خطا در بارگذاری فونت", e)
+        print(f"⚠️ خطا در بارگذاری فونت: {e}")
 else:
-    logger.warning("فونت فارسی یافت نشد، استفاده از فونت پیش‌فرض")
+    print("ℹ️ فونت فارسی یافت نشد، استفاده از فونت پیش‌فرض")
     Config.set('kivy', 'default_font', ['Arial'])
 
 # تنظیم اندازه پنجره برای دسکتاپ
-from kivy.utils import platform
 if platform != 'android':
     Window.size = (400, 650)
 
 # ========== ایمپورت ماژول‌های برنامه ==========
 try:
-    logger.info("شروع بارگذاری ماژول‌های برنامه")
     from utils.rtl_widgets import RTLTextInput, RTLSpinner
     from utils.text_helper import f
     from utils.storage import get_data_path, init_data_path
@@ -191,35 +200,30 @@ try:
     from utils.excel_exporter import export_to_excel
     from utils.pdf_exporter import export_to_pdf
     from utils.file_picker import FilePicker
-    logger.info("ماژول‌های برنامه با موفقیت بارگذاری شدند")
 except Exception as e:
-    logger.error("خطا در بارگذاری ماژول‌های برنامه", e)
-    # نمایش خطا به کاربر
-    print(f"خطای بحرانی در بارگذاری ماژول‌ها: {e}")
-    traceback.print_exc()
+    error_details = traceback.format_exc()
+    ErrorPopup.show_error(f"خطا در بارگذاری ماژول‌ها: {e}", error_details)
 
 # ========== تعریف نقش‌ها ==========
 ROLES = ['بازاریاب', 'سوپروایزر', 'سرپرست', 'مدیر', 'حسابدار', 'موزع', 'راننده', 'انباردار', 'سایر']
 
-# ========== صفحات برنامه ==========
+# ========== صفحات برنامه (همگی با try-except) ==========
 
 class LoginScreen(Screen):
     """صفحه ورود به سیستم"""
     def __init__(self, **kwargs):
         try:
-            logger.info("در حال ساخت صفحه LoginScreen")
             super().__init__(**kwargs)
             self.build_ui()
-            logger.info("صفحه LoginScreen با موفقیت ساخته شد")
         except Exception as e:
-            logger.error("خطا در ساخت LoginScreen", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت LoginScreen: {e}", error_details)
             raise
     
     def build_ui(self):
         try:
             layout = BoxLayout(orientation='vertical', spacing=20, padding=40)
             
-            # هدر با دکمه تنظیمات
             header_layout = BoxLayout(size_hint_y=0.1, spacing=10)
             settings_btn = Button(text='⚙️', size_hint_x=0.2, background_color=(0.3, 0.3, 0.3, 1))
             settings_btn.bind(on_press=self.open_settings)
@@ -228,18 +232,15 @@ class LoginScreen(Screen):
             header_layout.add_widget(Label(text='', size_hint_x=0.2))
             layout.add_widget(header_layout)
             
-            # عنوان
             title = Label(text=f('مدیریت فروش'), font_size='28sp', size_hint_y=0.2)
             layout.add_widget(title)
             
-            # فیلدهای ورود
             self.username = RTLTextInput(hint_text='نام کاربری', size_hint_y=None, height=50)
             layout.add_widget(self.username)
             
             self.password = RTLTextInput(hint_text='رمز عبور', password=True, size_hint_y=None, height=50)
             layout.add_widget(self.password)
             
-            # دکمه‌ها
             btn = Button(text=f('ورود'), size_hint_y=None, height=50)
             btn.bind(on_press=self.check_login)
             layout.add_widget(btn)
@@ -249,35 +250,30 @@ class LoginScreen(Screen):
             layout.add_widget(register_btn)
             
             self.add_widget(layout)
-            logger.info("UI صفحه LoginScreen ساخته شد")
         except Exception as e:
-            logger.error("خطا در ساخت UI LoginScreen", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت UI LoginScreen: {e}", error_details)
             raise
     
     def open_settings(self, instance):
-        logger.info("باز شدن صفحه تنظیمات")
         self.manager.current = 'settings_login'
     
     def open_register(self, instance):
-        logger.info("باز شدن صفحه ثبت نام")
         self.manager.current = 'register'
     
     def check_login(self, instance):
         try:
-            logger.info(f"تلاش برای ورود کاربر: {self.username.text}")
             user = login(self.username.text, self.password.text)
             if user:
-                logger.info(f"کاربر {self.username.text} با نقش {user.get('role')} وارد شد")
                 if user.get('role') == 'مدیر':
                     self.manager.current = 'admin'
                 else:
                     self.manager.current = 'user'
             else:
-                logger.warning(f"ورود ناموفق برای کاربر: {self.username.text}")
                 self.show_message('خطا', 'نام کاربری یا رمز عبور اشتباه است')
         except Exception as e:
-            logger.error(f"خطا در ورود کاربر {self.username.text}", e)
-            self.show_message('خطا', f'خطا در ورود: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ورود: {e}", error_details)
     
     def show_message(self, title, message):
         try:
@@ -288,21 +284,20 @@ class LoginScreen(Screen):
             popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
             btn.bind(on_press=popup.dismiss)
             popup.open()
-            logger.info(f"نمایش پیام: {title} - {message}")
         except Exception as e:
-            logger.error(f"خطا در نمایش پیام", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش پیام: {e}", error_details)
 
 
 class RegisterScreen(Screen):
     """صفحه ثبت نام کاربر جدید"""
     def __init__(self, **kwargs):
         try:
-            logger.info("در حال ساخت صفحه RegisterScreen")
             super().__init__(**kwargs)
             self.build_ui()
-            logger.info("صفحه RegisterScreen با موفقیت ساخته شد")
         except Exception as e:
-            logger.error("خطا در ساخت RegisterScreen", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت RegisterScreen: {e}", error_details)
             raise
     
     def build_ui(self):
@@ -341,14 +336,13 @@ class RegisterScreen(Screen):
             
             layout.add_widget(btn_layout)
             self.add_widget(layout)
-            logger.info("UI صفحه RegisterScreen ساخته شد")
         except Exception as e:
-            logger.error("خطا در ساخت UI RegisterScreen", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت UI RegisterScreen: {e}", error_details)
             raise
     
     def do_register(self, instance):
         try:
-            logger.info(f"تلاش برای ثبت نام کاربر: {self.username.text}")
             if self.password.text != self.confirm_password.text:
                 self.show_message('خطا', 'رمز عبور و تکرار آن مطابقت ندارند')
                 return
@@ -362,18 +356,15 @@ class RegisterScreen(Screen):
             )
             
             if success:
-                logger.info(f"ثبت نام موفق برای کاربر: {self.username.text}")
                 self.show_message('موفق', message)
                 self.manager.current = 'login'
             else:
-                logger.warning(f"ثبت نام ناموفق برای کاربر: {self.username.text} - {message}")
                 self.show_message('خطا', message)
         except Exception as e:
-            logger.error(f"خطا در ثبت نام کاربر {self.username.text}", e)
-            self.show_message('خطا', f'خطا در ثبت نام: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ثبت نام: {e}", error_details)
     
     def go_back(self, instance):
-        logger.info("بازگشت از صفحه ثبت نام")
         self.manager.current = 'login'
     
     def show_message(self, title, message):
@@ -386,21 +377,19 @@ class RegisterScreen(Screen):
             btn.bind(on_press=popup.dismiss)
             popup.open()
         except Exception as e:
-            logger.error(f"خطا در نمایش پیام", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش پیام: {e}", error_details)
 
-
-# ========== کلاس‌های اصلی برنامه (بدون تغییر) ==========
 
 class AdminSettingsScreen(Screen):
     """تنظیمات مدیر"""
     def __init__(self, **kwargs):
         try:
-            logger.info("در حال ساخت صفحه AdminSettingsScreen")
             super().__init__(**kwargs)
             self.build_ui()
-            logger.info("صفحه AdminSettingsScreen با موفقیت ساخته شد")
         except Exception as e:
-            logger.error("خطا در ساخت AdminSettingsScreen", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت AdminSettingsScreen: {e}", error_details)
             raise
     
     def build_ui(self):
@@ -439,9 +428,9 @@ class AdminSettingsScreen(Screen):
             
             self.add_widget(layout)
             self.switch_tab(0)
-            logger.info("UI صفحه AdminSettingsScreen ساخته شد")
         except Exception as e:
-            logger.error("خطا در ساخت UI AdminSettingsScreen", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت UI AdminSettingsScreen: {e}", error_details)
             raise
     
     def switch_tab(self, tab_id):
@@ -457,8 +446,8 @@ class AdminSettingsScreen(Screen):
             elif tab_id == 3:
                 self.show_change_password_tab()
         except Exception as e:
-            logger.error(f"خطا در تغییر تب {tab_id}", e)
-            self.show_message('خطا', f'خطا در بارگذاری تب: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در تغییر تب: {e}", error_details)
     
     def show_change_password_tab(self):
         try:
@@ -489,8 +478,8 @@ class AdminSettingsScreen(Screen):
             layout.add_widget(btn_layout)
             self.content_area.add_widget(layout)
         except Exception as e:
-            logger.error("خطا در نمایش تب تغییر رمز", e)
-            raise
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش تب تغییر رمز: {e}", error_details)
     
     def change_password(self, instance):
         try:
@@ -514,10 +503,9 @@ class AdminSettingsScreen(Screen):
             set_admin_password(new)
             self.clear_password_fields(instance)
             self.show_message('موفق', 'رمز عبور با موفقیت تغییر کرد')
-            logger.info("رمز عبور مدیر با موفقیت تغییر کرد")
         except Exception as e:
-            logger.error("خطا در تغییر رمز عبور", e)
-            self.show_message('خطا', f'خطا در تغییر رمز: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در تغییر رمز: {e}", error_details)
     
     def clear_password_fields(self, instance):
         self.old_password.text = ''
@@ -548,8 +536,8 @@ class AdminSettingsScreen(Screen):
             layout.add_widget(content)
             self.content_area.add_widget(layout)
         except Exception as e:
-            logger.error("خطا در نمایش کاربران", e)
-            self.show_message('خطا', f'خطا در بارگذاری کاربران: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش کاربران: {e}", error_details)
     
     def delete_user(self, user_id):
         try:
@@ -577,7 +565,6 @@ class AdminSettingsScreen(Screen):
                 popup.dismiss()
                 self.show_message('موفق', f'کاربر "{username}" با موفقیت حذف شد')
                 self.switch_tab(0)
-                logger.info(f"کاربر {username} حذف شد")
             
             def cancel_delete(instance):
                 popup.dismiss()
@@ -586,8 +573,8 @@ class AdminSettingsScreen(Screen):
             no_btn.bind(on_press=cancel_delete)
             popup.open()
         except Exception as e:
-            logger.error(f"خطا در حذف کاربر {user_id}", e)
-            self.show_message('خطا', f'خطا در حذف کاربر: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در حذف کاربر: {e}", error_details)
     
     def show_codes_tab(self):
         try:
@@ -624,18 +611,17 @@ class AdminSettingsScreen(Screen):
                     code = create_code(role_spinner.text, name_input.text)
                     self.show_message('موفق', f'کد ساخته شد:\n{code}')
                     self.switch_tab(1)
-                    logger.info(f"کد جدید ساخته شد: {code}")
                 except Exception as e:
-                    logger.error("خطا در ساخت کد", e)
-                    self.show_message('خطا', f'خطا در ساخت کد: {str(e)}')
+                    error_details = traceback.format_exc()
+                    ErrorPopup.show_error(f"خطا در ساخت کد: {e}", error_details)
             
             create_btn.bind(on_press=do_create)
             
             layout.add_widget(content)
             self.content_area.add_widget(layout)
         except Exception as e:
-            logger.error("خطا در نمایش کدها", e)
-            self.show_message('خطا', f'خطا در بارگذاری کدها: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش کدها: {e}", error_details)
     
     def show_general_settings_tab(self):
         try:
@@ -668,8 +654,8 @@ class AdminSettingsScreen(Screen):
             self.content_area.add_widget(layout)
             save_btn.bind(on_press=lambda x: self.save_settings(inputs))
         except Exception as e:
-            logger.error("خطا در نمایش تنظیمات عمومی", e)
-            self.show_message('خطا', f'خطا در بارگذاری تنظیمات: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش تنظیمات عمومی: {e}", error_details)
     
     def save_settings(self, inputs):
         try:
@@ -689,10 +675,9 @@ class AdminSettingsScreen(Screen):
                 settings[key] = value
             update_settings(settings)
             self.show_message('موفق', 'تنظیمات ذخیره شد')
-            logger.info("تنظیمات عمومی ذخیره شد")
         except Exception as e:
-            logger.error("خطا در ذخیره تنظیمات", e)
-            self.show_message('خطا', f'خطا در ذخیره تنظیمات: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ذخیره تنظیمات: {e}", error_details)
     
     def show_message(self, title, message):
         try:
@@ -704,10 +689,10 @@ class AdminSettingsScreen(Screen):
             btn.bind(on_press=popup.dismiss)
             popup.open()
         except Exception as e:
-            logger.error(f"خطا در نمایش پیام", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش پیام: {e}", error_details)
     
     def go_back(self, instance):
-        logger.info("بازگشت از صفحه تنظیمات مدیر")
         self.manager.current = 'login'
 
 
@@ -715,13 +700,12 @@ class AdminScreen(Screen):
     """پنل مدیریت"""
     def __init__(self, **kwargs):
         try:
-            logger.info("در حال ساخت صفحه AdminScreen")
             super().__init__(**kwargs)
             self.current_tab = 0
             self.build_ui()
-            logger.info("صفحه AdminScreen با موفقیت ساخته شد")
         except Exception as e:
-            logger.error("خطا در ساخت AdminScreen", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت AdminScreen: {e}", error_details)
             raise
     
     def build_ui(self):
@@ -760,9 +744,9 @@ class AdminScreen(Screen):
             
             self.add_widget(main_layout)
             self.switch_tab(0)
-            logger.info("UI صفحه AdminScreen ساخته شد")
         except Exception as e:
-            logger.error("خطا در ساخت UI AdminScreen", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت UI AdminScreen: {e}", error_details)
             raise
     
     def switch_tab(self, tab_id):
@@ -779,8 +763,8 @@ class AdminScreen(Screen):
             elif tab_id == 3:
                 self.show_settings_tab()
         except Exception as e:
-            logger.error(f"خطا در تغییر تب {tab_id}", e)
-            self.show_message('خطا', f'خطا در بارگذاری تب: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در تغییر تب: {e}", error_details)
     
     def show_agents_tab(self):
         try:
@@ -822,8 +806,8 @@ class AdminScreen(Screen):
             layout.add_widget(content)
             self.content_area.add_widget(layout)
         except Exception as e:
-            logger.error("خطا در نمایش تب عامل‌ها", e)
-            self.show_message('خطا', f'خطا در بارگذاری عامل‌ها: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش عامل‌ها: {e}", error_details)
     
     def add_agent_and_refresh(self, name_input, phone_input, role_spinner, email_input):
         try:
@@ -841,20 +825,18 @@ class AdminScreen(Screen):
                 email_input.text = ''
                 self.show_message('موفق', 'عامل با موفقیت اضافه شد')
                 self.switch_tab(0)
-                logger.info(f"عامل جدید اضافه شد: {agent['name']}")
         except Exception as e:
-            logger.error("خطا در افزودن عامل", e)
-            self.show_message('خطا', f'خطا در افزودن عامل: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در افزودن عامل: {e}", error_details)
     
     def delete_agent_and_refresh(self, agent_id):
         try:
             delete_agent(agent_id)
             self.show_message('موفق', 'عامل با موفقیت حذف شد')
             self.switch_tab(0)
-            logger.info(f"عامل {agent_id} حذف شد")
         except Exception as e:
-            logger.error(f"خطا در حذف عامل {agent_id}", e)
-            self.show_message('خطا', f'خطا در حذف عامل: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در حذف عامل: {e}", error_details)
     
     def show_routes_tab(self):
         try:
@@ -877,8 +859,8 @@ class AdminScreen(Screen):
             self.show_manual_routes()
             self.content_area.add_widget(layout)
         except Exception as e:
-            logger.error("خطا در نمایش تب مسیرها", e)
-            self.show_message('خطا', f'خطا در بارگذاری مسیرها: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش مسیرها: {e}", error_details)
     
     def show_manual_routes(self):
         try:
@@ -908,8 +890,8 @@ class AdminScreen(Screen):
             
             self.refresh_routes_list()
         except Exception as e:
-            logger.error("خطا در نمایش مسیرهای دستی", e)
-            raise
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش مسیرهای دستی: {e}", error_details)
     
     def refresh_routes_list(self):
         try:
@@ -923,7 +905,8 @@ class AdminScreen(Screen):
                 box.add_widget(del_btn)
                 self.routes_list.add_widget(box)
         except Exception as e:
-            logger.error("خطا در به‌روزرسانی لیست مسیرها", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در به‌روزرسانی لیست مسیرها: {e}", error_details)
     
     def add_route_manual(self, instance):
         try:
@@ -932,20 +915,18 @@ class AdminScreen(Screen):
                 self.route_name_input.text = ''
                 self.refresh_routes_list()
                 self.show_message('موفق', 'مسیر با موفقیت اضافه شد')
-                logger.info(f"مسیر جدید اضافه شد: {self.route_name_input.text}")
         except Exception as e:
-            logger.error("خطا در افزودن مسیر", e)
-            self.show_message('خطا', f'خطا در افزودن مسیر: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در افزودن مسیر: {e}", error_details)
     
     def delete_route_and_refresh(self, route_id):
         try:
             delete_route(route_id)
             self.refresh_routes_list()
             self.show_message('موفق', 'مسیر با موفقیت حذف شد')
-            logger.info(f"مسیر {route_id} حذف شد")
         except Exception as e:
-            logger.error(f"خطا در حذف مسیر {route_id}", e)
-            self.show_message('خطا', f'خطا در حذف مسیر: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در حذف مسیر: {e}", error_details)
     
     def show_excel_routes(self):
         try:
@@ -967,8 +948,8 @@ class AdminScreen(Screen):
             
             self.routes_content.add_widget(layout)
         except Exception as e:
-            logger.error("خطا در نمایش ورود اکسل مسیرها", e)
-            self.show_message('خطا', f'خطا در بارگذاری: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش ورود اکسل مسیرها: {e}", error_details)
     
     def import_routes_from_excel(self, instance):
         try:
@@ -981,11 +962,10 @@ class AdminScreen(Screen):
             self.show_message('موفق' if success else 'خطا', message)
             
             if success:
-                logger.info(f"مسیرها از فایل {filepath} وارد شدند")
                 self.show_manual_routes()
         except Exception as e:
-            logger.error("خطا در ورود مسیرها از اکسل", e)
-            self.show_message('خطا', f'خطا در ورود مسیرها: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ورود مسیرها از اکسل: {e}", error_details)
     
     def show_customers_tab(self):
         try:
@@ -1008,8 +988,8 @@ class AdminScreen(Screen):
             self.show_manual_customers()
             self.content_area.add_widget(layout)
         except Exception as e:
-            logger.error("خطا در نمایش تب مشتریان", e)
-            self.show_message('خطا', f'خطا در بارگذاری مشتریان: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش مشتریان: {e}", error_details)
     
     def show_manual_customers(self):
         try:
@@ -1058,8 +1038,8 @@ class AdminScreen(Screen):
             
             self.refresh_customers_list()
         except Exception as e:
-            logger.error("خطا در نمایش مشتریان دستی", e)
-            raise
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش مشتریان دستی: {e}", error_details)
     
     def refresh_customers_list(self, instance=None):
         try:
@@ -1083,7 +1063,8 @@ class AdminScreen(Screen):
                 box.add_widget(del_btn)
                 self.customers_list.add_widget(box)
         except Exception as e:
-            logger.error("خطا در به‌روزرسانی لیست مشتریان", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در به‌روزرسانی لیست مشتریان: {e}", error_details)
     
     def add_customer_manual(self, instance):
         try:
@@ -1117,20 +1098,18 @@ class AdminScreen(Screen):
             
             self.refresh_customers_list()
             self.show_message('موفق', 'مشتری با موفقیت اضافه شد')
-            logger.info(f"مشتری جدید اضافه شد: {name}")
         except Exception as e:
-            logger.error("خطا در افزودن مشتری", e)
-            self.show_message('خطا', f'خطا در افزودن مشتری: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در افزودن مشتری: {e}", error_details)
     
     def delete_customer_and_refresh(self, customer_id):
         try:
             delete_customer(customer_id)
             self.refresh_customers_list()
             self.show_message('موفق', 'مشتری با موفقیت حذف شد')
-            logger.info(f"مشتری {customer_id} حذف شد")
         except Exception as e:
-            logger.error(f"خطا در حذف مشتری {customer_id}", e)
-            self.show_message('خطا', f'خطا در حذف مشتری: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در حذف مشتری: {e}", error_details)
     
     def show_excel_customers(self):
         try:
@@ -1152,8 +1131,8 @@ class AdminScreen(Screen):
             
             self.customers_content.add_widget(layout)
         except Exception as e:
-            logger.error("خطا در نمایش ورود اکسل مشتریان", e)
-            self.show_message('خطا', f'خطا در بارگذاری: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش ورود اکسل مشتریان: {e}", error_details)
     
     def import_customers_from_excel(self, instance):
         try:
@@ -1166,11 +1145,10 @@ class AdminScreen(Screen):
             self.show_message('موفق' if success else 'خطا', message)
             
             if success:
-                logger.info(f"مشتریان از فایل {filepath} وارد شدند")
                 self.show_manual_customers()
         except Exception as e:
-            logger.error("خطا در ورود مشتریان از اکسل", e)
-            self.show_message('خطا', f'خطا در ورود مشتریان: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ورود مشتریان از اکسل: {e}", error_details)
     
     def show_settings_tab(self):
         try:
@@ -1241,8 +1219,8 @@ class AdminScreen(Screen):
             layout.add_widget(content)
             self.content_area.add_widget(layout)
         except Exception as e:
-            logger.error("خطا در نمایش تنظیمات", e)
-            self.show_message('خطا', f'خطا در بارگذاری تنظیمات: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش تنظیمات: {e}", error_details)
     
     def save_settings(self, inputs):
         try:
@@ -1269,10 +1247,9 @@ class AdminScreen(Screen):
             
             update_settings(settings)
             self.show_message('موفق', 'تنظیمات با موفقیت ذخیره شد')
-            logger.info("تنظیمات ذخیره شد")
         except Exception as e:
-            logger.error("خطا در ذخیره تنظیمات", e)
-            self.show_message('خطا', f'خطا در ذخیره تنظیمات: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ذخیره تنظیمات: {e}", error_details)
     
     def show_message(self, title, message):
         try:
@@ -1284,10 +1261,10 @@ class AdminScreen(Screen):
             btn.bind(on_press=popup.dismiss)
             popup.open()
         except Exception as e:
-            logger.error(f"خطا در نمایش پیام", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش پیام: {e}", error_details)
     
     def logout(self, instance):
-        logger.info("خروج از پنل مدیریت")
         self.manager.current = 'login'
 
 
@@ -1295,13 +1272,12 @@ class UserScreen(Screen):
     """صفحه ثبت ویزیت روزانه"""
     def __init__(self, **kwargs):
         try:
-            logger.info("در حال ساخت صفحه UserScreen")
             super().__init__(**kwargs)
             self.settings = get_settings()
             self.build_ui()
-            logger.info("صفحه UserScreen با موفقیت ساخته شد")
         except Exception as e:
-            logger.error("خطا در ساخت UserScreen", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت UserScreen: {e}", error_details)
             raise
     
     def build_ui(self):
@@ -1419,9 +1395,9 @@ class UserScreen(Screen):
             self.add_widget(layout)
             
             self.update_route_info()
-            logger.info("UI صفحه UserScreen ساخته شد")
         except Exception as e:
-            logger.error("خطا در ساخت UI UserScreen", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت UI UserScreen: {e}", error_details)
             raise
     
     def update_route_info(self):
@@ -1450,7 +1426,8 @@ class UserScreen(Screen):
                 self.first_customer_spinner.values = ['']
                 self.first_customer_spinner.text = ''
         except Exception as e:
-            logger.error("خطا در بروزرسانی اطلاعات مسیر", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در بروزرسانی اطلاعات مسیر: {e}", error_details)
     
     def on_route_change(self, spinner, text):
         self.update_route_info()
@@ -1489,7 +1466,6 @@ class UserScreen(Screen):
                     popup.dismiss()
                     self.show_message('موفق', 'اطلاعات ویزیت با موفقیت جایگزین شد')
                     self.clear_form()
-                    logger.info(f"ویزیت تاریخ {log_data['visit_date']} جایگزین شد")
                 
                 def cancel(instance):
                     popup.dismiss()
@@ -1501,10 +1477,9 @@ class UserScreen(Screen):
                 save_daily_log(log_data['visit_date'], log_data)
                 self.show_message('موفق', 'اطلاعات ویزیت با موفقیت ذخیره شد')
                 self.clear_form()
-                logger.info(f"ویزیت جدید برای تاریخ {log_data['visit_date']} ذخیره شد")
         except Exception as e:
-            logger.error("خطا در ذخیره لاگ", e)
-            self.show_message('خطا', f'خطا در ذخیره اطلاعات: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ذخیره ویزیت: {e}", error_details)
     
     def clear_form(self):
         for key in ['first_visit_time', 'last_visit_time', 'clock_out']:
@@ -1516,11 +1491,9 @@ class UserScreen(Screen):
                 self.inputs[key].text = '0'
     
     def go_to_report(self, instance):
-        logger.info("باز شدن صفحه گزارش")
         self.manager.current = 'report'
     
     def logout(self, instance):
-        logger.info("خروج از صفحه کاربر")
         self.manager.current = 'login'
     
     def show_message(self, title, message):
@@ -1533,19 +1506,19 @@ class UserScreen(Screen):
             btn.bind(on_press=popup.dismiss)
             popup.open()
         except Exception as e:
-            logger.error(f"خطا در نمایش پیام", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش پیام: {e}", error_details)
 
 
 class ReportScreen(Screen):
     """صفحه گزارشات"""
     def __init__(self, **kwargs):
         try:
-            logger.info("در حال ساخت صفحه ReportScreen")
             super().__init__(**kwargs)
             self.build_ui()
-            logger.info("صفحه ReportScreen با موفقیت ساخته شد")
         except Exception as e:
-            logger.error("خطا در ساخت ReportScreen", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت ReportScreen: {e}", error_details)
             raise
     
     def build_ui(self):
@@ -1583,9 +1556,9 @@ class ReportScreen(Screen):
             self.add_widget(layout)
             
             self.refresh_stats(None)
-            logger.info("UI صفحه ReportScreen ساخته شد")
         except Exception as e:
-            logger.error("خطا در ساخت UI ReportScreen", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت UI ReportScreen: {e}", error_details)
             raise
     
     def refresh_stats(self, instance):
@@ -1671,11 +1644,9 @@ class ReportScreen(Screen):
                 row_box.add_widget(Label(text=f"{sales_num:,}", size_hint_x=0.25))
                 
                 self.stats_layout.add_widget(row_box)
-            
-            logger.info("آمار به‌روزرسانی شد")
         except Exception as e:
-            logger.error("خطا در به‌روزرسانی آمار", e)
-            self.show_message('خطا', f'خطا در بارگذاری آمار: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در به‌روزرسانی آمار: {e}", error_details)
     
     def make_stat_card(self, title, value, unit, color):
         try:
@@ -1693,7 +1664,8 @@ class ReportScreen(Screen):
                 card.bg_rect = self.bg_rect
             return card
         except Exception as e:
-            logger.error("خطا در ساخت کارت آماری", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت کارت آماری: {e}", error_details)
             return Label(text=f"{title}: {value}")
     
     def update_bg(self, instance, value):
@@ -1708,27 +1680,24 @@ class ReportScreen(Screen):
             filepath = export_to_excel()
             if filepath:
                 self.show_message('موفق', 'فایل Excel ذخیره شد')
-                logger.info(f"فایل Excel در {filepath} ذخیره شد")
             else:
                 self.show_message('خطا', 'هیچ داده‌ای وجود ندارد')
         except Exception as e:
-            logger.error("خطا در خروجی Excel", e)
-            self.show_message('خطا', f'خطا در ساخت Excel: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در خروجی Excel: {e}", error_details)
     
     def export_pdf(self, instance):
         try:
             filepath = export_to_pdf()
             if filepath:
                 self.show_message('موفق', 'فایل PDF ذخیره شد')
-                logger.info(f"فایل PDF در {filepath} ذخیره شد")
             else:
                 self.show_message('خطا', 'هیچ داده‌ای وجود ندارد')
         except Exception as e:
-            logger.error("خطا در خروجی PDF", e)
-            self.show_message('خطا', f'خطا در ساخت PDF: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در خروجی PDF: {e}", error_details)
     
     def go_back(self, instance):
-        logger.info("بازگشت از صفحه گزارش")
         self.manager.current = 'user'
     
     def show_message(self, title, message):
@@ -1741,19 +1710,19 @@ class ReportScreen(Screen):
             btn.bind(on_press=popup.dismiss)
             popup.open()
         except Exception as e:
-            logger.error(f"خطا در نمایش پیام", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش پیام: {e}", error_details)
 
 
 class SettingsLoginScreen(Screen):
     """صفحه ورود به تنظیمات"""
     def __init__(self, **kwargs):
         try:
-            logger.info("در حال ساخت صفحه SettingsLoginScreen")
             super().__init__(**kwargs)
             self.build_ui()
-            logger.info("صفحه SettingsLoginScreen با موفقیت ساخته شد")
         except Exception as e:
-            logger.error("خطا در ساخت SettingsLoginScreen", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت SettingsLoginScreen: {e}", error_details)
             raise
     
     def build_ui(self):
@@ -1777,27 +1746,24 @@ class SettingsLoginScreen(Screen):
             
             layout.add_widget(btn_layout)
             self.add_widget(layout)
-            logger.info("UI صفحه SettingsLoginScreen ساخته شد")
         except Exception as e:
-            logger.error("خطا در ساخت UI SettingsLoginScreen", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ساخت UI SettingsLoginScreen: {e}", error_details)
             raise
     
     def check_login(self, instance):
         try:
             hashed = get_admin_password()
             if hashed and verify_password(self.password_input.text, hashed):
-                logger.info("ورود موفق به تنظیمات مدیر")
                 self.manager.current = 'admin_settings'
             else:
-                logger.warning("ورود ناموفق به تنظیمات مدیر")
                 self.show_message('خطا', 'رمز عبور اشتباه است')
                 self.password_input.text = ''
         except Exception as e:
-            logger.error("خطا در ورود به تنظیمات", e)
-            self.show_message('خطا', f'خطا در ورود: {str(e)}')
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ورود به تنظیمات: {e}", error_details)
     
     def go_back(self, instance):
-        logger.info("بازگشت از صفحه تنظیمات")
         self.manager.current = 'login'
     
     def show_message(self, title, message):
@@ -1810,7 +1776,8 @@ class SettingsLoginScreen(Screen):
             btn.bind(on_press=popup.dismiss)
             popup.open()
         except Exception as e:
-            logger.error(f"خطا در نمایش پیام", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در نمایش پیام: {e}", error_details)
 
 
 class ScreenManagement(ScreenManager):
@@ -1822,14 +1789,9 @@ class MainApp(App):
     """کلاس اصلی برنامه"""
     def build(self):
         try:
-            logger.info("="*60)
-            logger.info("شروع برنامه مدیریت ویزیت")
-            logger.info("="*60)
-            
             # مقداردهی اولیه مسیر ذخیره‌سازی
             self.data_path = init_data_path()
             os.makedirs(os.path.join(self.data_path, 'reports'), exist_ok=True)
-            os.makedirs(os.path.join(self.data_path, 'logs'), exist_ok=True)
             
             self.init_json_files()
             
@@ -1842,38 +1804,12 @@ class MainApp(App):
             sm.add_widget(AdminSettingsScreen(name='admin_settings'))
             sm.add_widget(SettingsLoginScreen(name='settings_login'))
             
-            logger.info("برنامه با موفقیت راه‌اندازی شد")
             return sm
         except Exception as e:
-            logger.error("خطا در راه‌اندازی برنامه", e)
-            # نمایش خطا به کاربر
-            self.show_fatal_error(str(e))
-            raise
-    
-    def show_fatal_error(self, error_message):
-        """نمایش خطای مرگبار به کاربر"""
-        try:
-            from kivy.uix.popup import Popup
-            from kivy.uix.label import Label
-            from kivy.uix.button import Button
-            from kivy.uix.boxlayout import BoxLayout
-            
-            content = BoxLayout(orientation='vertical', padding=20, spacing=15)
-            content.add_widget(Label(text=f"خطای بحرانی در برنامه:\n{error_message}", size_hint_y=None, height=100))
-            
-            # نمایش مسیر فایل لاگ
-            log_path = logger.get_log_file_path()
-            if log_path:
-                content.add_widget(Label(text=f"فایل لاگ:\n{log_path}", size_hint_y=None, height=60, font_size='12sp'))
-            
-            btn = Button(text='خروج', size_hint_y=None, height=50)
-            content.add_widget(btn)
-            
-            popup = Popup(title='خطای برنامه', content=content, size_hint=(0.9, 0.5))
-            btn.bind(on_press=popup.dismiss)
-            popup.open()
-        except:
-            pass
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در راه‌اندازی برنامه: {e}", error_details)
+            # برگرداندن یه صفحه خالی برای جلوگیری از کرش کامل
+            return ScreenManager()
     
     def init_json_files(self):
         """ایجاد فایل‌های JSON اولیه در صورت نبودن"""
@@ -1913,9 +1849,10 @@ class MainApp(App):
                 filepath = os.path.join(data_path, filename)
                 if not os.path.exists(filepath):
                     save_json(filename, default_content)
-                    logger.info(f"فایل {filename} ایجاد شد")
+                    print(f"✅ فایل {filename} ایجاد شد")
         except Exception as e:
-            logger.error("خطا در ایجاد فایل‌های JSON اولیه", e)
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در ایجاد فایل‌های اولیه: {e}", error_details)
             raise
 
 
@@ -1923,13 +1860,30 @@ if __name__ == '__main__':
     try:
         MainApp().run()
     except Exception as e:
-        print(f"خطای بحرانی در اجرای برنامه: {e}")
-        traceback.print_exc()
-        # در صورت بروز خطا، یک فایل لاگ جداگانه در پوشه فعلی ایجاد کن
+        error_details = traceback.format_exc()
+        # تلاش برای نمایش خطا (اگر برنامه باز نشد)
         try:
-            with open('emergency_log.txt', 'w', encoding='utf-8') as f:
-                f.write(f"خطای بحرانی: {e}\n")
-                f.write(traceback.format_exc())
-            print("فایل emergency_log.txt در پوشه فعلی ایجاد شد.")
+            from kivy.uix.popup import Popup
+            from kivy.uix.label import Label
+            from kivy.uix.button import Button
+            from kivy.uix.boxlayout import BoxLayout
+            from kivy.app import App
+            
+            class EmergencyApp(App):
+                def build(self):
+                    content = BoxLayout(orientation='vertical', padding=20, spacing=15)
+                    content.add_widget(Label(text=f"خطای بحرانی:\n{str(e)}", size_hint_y=None, height=200))
+                    btn = Button(text='بستن', size_hint_y=None, height=50)
+                    content.add_widget(btn)
+                    popup = Popup(title='⚠️ خطا', content=content, size_hint=(0.9, 0.6), auto_dismiss=False)
+                    btn.bind(on_press=popup.dismiss)
+                    popup.open()
+                    return BoxLayout()
+            
+            EmergencyApp().run()
         except:
-            pass
+            # اگر هیچ کاری نشد، توی کنسول چاپ کن
+            print("="*60)
+            print(f"❌ خطای بحرانی: {e}")
+            print(error_details)
+            print("="*60)
