@@ -1,10 +1,13 @@
 """
-اپلیکیشن مدیریت ویزیت و فروش - نسخه کامل و بهینه‌شده برای اندروید
+اپلیکیشن مدیریت ویزیت و فروش - نسخه کامل با سیستم لاگ‌گیری
 """
 
 # ========== تنظیم فونت و مسیرها (اصلاح شده برای اندروید) ==========
 import os
 import json
+import sys
+import traceback
+from datetime import datetime
 from kivy.config import Config
 from kivy.core.text import LabelBase
 from kivy.app import App
@@ -18,6 +21,108 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.popup import Popup
 from kivy.graphics import Color, Rectangle
 from kivy.utils import platform
+
+# ========== سیستم لاگ‌گیری ==========
+class Logger:
+    """سیستم لاگ‌گیری پیشرفته برای ذخیره خطاها و رویدادها"""
+    
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(Logger, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
+    def __init__(self):
+        if self._initialized:
+            return
+        self._initialized = True
+        self.log_file = None
+        self.setup_log_file()
+    
+    def setup_log_file(self):
+        """تنظیم مسیر فایل لاگ"""
+        try:
+            from utils.storage import get_data_path
+            data_path = get_data_path()
+            self.log_dir = os.path.join(data_path, 'logs')
+            os.makedirs(self.log_dir, exist_ok=True)
+            
+            # نام فایل لاگ بر اساس تاریخ
+            today = datetime.now().strftime('%Y-%m-%d')
+            self.log_file = os.path.join(self.log_dir, f'app_log_{today}.txt')
+            
+            # نوشتن هدر در فایل لاگ
+            if not os.path.exists(self.log_file):
+                with open(self.log_file, 'w', encoding='utf-8') as f:
+                    f.write(f"{'='*60}\n")
+                    f.write(f"برنامه مدیریت ویزیت - لاگ شروع\n")
+                    f.write(f"تاریخ: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    f.write(f"{'='*60}\n\n")
+        except Exception as e:
+            # اگر نتوانست مسیر را پیدا کند، از مسیر پیش‌فرض استفاده کن
+            self.log_dir = os.path.join(os.getcwd(), 'logs')
+            os.makedirs(self.log_dir, exist_ok=True)
+            today = datetime.now().strftime('%Y-%m-%d')
+            self.log_file = os.path.join(self.log_dir, f'app_log_{today}.txt')
+    
+    def log(self, level, message, exception=None):
+        """ثبت پیام در فایل لاگ"""
+        try:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            log_entry = f"[{timestamp}] [{level}] {message}"
+            
+            if exception:
+                log_entry += f"\n    Exception: {str(exception)}"
+                log_entry += f"\n    Traceback:\n{traceback.format_exc()}"
+            
+            # چاپ در کنسول (برای دیباگ)
+            print(log_entry)
+            
+            # ذخیره در فایل
+            if self.log_file:
+                with open(self.log_file, 'a', encoding='utf-8') as f:
+                    f.write(log_entry + '\n')
+                    if exception:
+                        f.write('-'*40 + '\n')
+        except Exception as e:
+            print(f"خطا در سیستم لاگ‌گیری: {e}")
+    
+    def info(self, message):
+        """ثبت پیام اطلاعاتی"""
+        self.log('INFO', message)
+    
+    def warning(self, message):
+        """ثبت پیام هشدار"""
+        self.log('WARNING', message)
+    
+    def error(self, message, exception=None):
+        """ثبت پیام خطا"""
+        self.log('ERROR', message, exception)
+    
+    def debug(self, message):
+        """ثبت پیام دیباگ"""
+        self.log('DEBUG', message)
+    
+    def get_log_file_path(self):
+        """دریافت مسیر فایل لاگ"""
+        return self.log_file
+    
+    def get_log_content(self, lines=100):
+        """دریافت آخرین خطوط لاگ"""
+        try:
+            if not self.log_file or not os.path.exists(self.log_file):
+                return "فایل لاگ وجود ندارد"
+            
+            with open(self.log_file, 'r', encoding='utf-8') as f:
+                all_lines = f.readlines()
+                return ''.join(all_lines[-lines:])
+        except Exception as e:
+            return f"خطا در خواندن لاگ: {e}"
+
+# ایجاد نمونه سراسری از لاگر
+logger = Logger()
 
 # ========== مدیریت مسیرها و فونت ==========
 def get_app_root():
@@ -40,7 +145,7 @@ def get_font_path():
         os.path.join(os.path.dirname(__file__), 'fonts', 'Vazirmatn.ttf'),
         os.path.join(os.path.dirname(__file__), 'Vazirmatn-Regular.ttf'),
         os.path.join(os.path.dirname(__file__), 'Vazirmatn.ttf'),
-        os.path.join('/system/fonts/', 'Vazirmatn-Regular.ttf'),  # مسیر احتمالی در اندروید
+        os.path.join('/system/fonts/', 'Vazirmatn-Regular.ttf'),
         os.path.join('/system/fonts/', 'Vazirmatn.ttf'),
     ]
     for path in possible_paths:
@@ -54,12 +159,11 @@ if font_path:
     try:
         LabelBase.register(name='Vazirmatn', fn_regular=font_path)
         Config.set('kivy', 'default_font', ['Vazirmatn'])
-        print(f"✅ فونت با موفقیت از مسیر {font_path} بارگذاری شد")
+        logger.info(f"فونت با موفقیت از مسیر {font_path} بارگذاری شد")
     except Exception as e:
-        print(f"⚠️ خطا در بارگذاری فونت: {e}")
+        logger.error("خطا در بارگذاری فونت", e)
 else:
-    print("ℹ️ فونت فارسی یافت نشد، استفاده از فونت پیش‌فرض")
-    # تنظیم فونت پیش‌فرض برای جلوگیری از خطا
+    logger.warning("فونت فارسی یافت نشد، استفاده از فونت پیش‌فرض")
     Config.set('kivy', 'default_font', ['Arial'])
 
 # تنظیم اندازه پنجره برای دسکتاپ
@@ -68,23 +172,31 @@ if platform != 'android':
     Window.size = (400, 650)
 
 # ========== ایمپورت ماژول‌های برنامه ==========
-from utils.rtl_widgets import RTLTextInput, RTLSpinner
-from utils.text_helper import f
-from utils.storage import get_data_path, init_data_path
-from utils.file_manager import (
-    get_agents, add_agent, delete_agent,
-    get_routes, add_route, delete_route,
-    get_customers, add_customer, delete_customer,
-    get_settings, update_settings,
-    get_daily_logs, save_daily_log
-)
-from utils.jalali_date import get_today_jalali, get_current_time
-from utils.user_manager import login, register_user, get_users, delete_user_by_id, get_codes, create_code
-from utils.auth import get_admin_password, set_admin_password, verify_password
-from utils.excel_importer import import_routes_from_excel, import_customers_from_excel
-from utils.excel_exporter import export_to_excel
-from utils.pdf_exporter import export_to_pdf
-from utils.file_picker import FilePicker
+try:
+    logger.info("شروع بارگذاری ماژول‌های برنامه")
+    from utils.rtl_widgets import RTLTextInput, RTLSpinner
+    from utils.text_helper import f
+    from utils.storage import get_data_path, init_data_path
+    from utils.file_manager import (
+        get_agents, add_agent, delete_agent,
+        get_routes, add_route, delete_route,
+        get_customers, add_customer, delete_customer,
+        get_settings, update_settings,
+        get_daily_logs, save_daily_log
+    )
+    from utils.jalali_date import get_today_jalali, get_current_time
+    from utils.user_manager import login, register_user, get_users, delete_user_by_id, get_codes, create_code
+    from utils.auth import get_admin_password, set_admin_password, verify_password
+    from utils.excel_importer import import_routes_from_excel, import_customers_from_excel
+    from utils.excel_exporter import export_to_excel
+    from utils.pdf_exporter import export_to_pdf
+    from utils.file_picker import FilePicker
+    logger.info("ماژول‌های برنامه با موفقیت بارگذاری شدند")
+except Exception as e:
+    logger.error("خطا در بارگذاری ماژول‌های برنامه", e)
+    # نمایش خطا به کاربر
+    print(f"خطای بحرانی در بارگذاری ماژول‌ها: {e}")
+    traceback.print_exc()
 
 # ========== تعریف نقش‌ها ==========
 ROLES = ['بازاریاب', 'سوپروایزر', 'سرپرست', 'مدیر', 'حسابدار', 'موزع', 'راننده', 'انباردار', 'سایر']
@@ -94,246 +206,318 @@ ROLES = ['بازاریاب', 'سوپروایزر', 'سرپرست', 'مدیر', '
 class LoginScreen(Screen):
     """صفحه ورود به سیستم"""
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.build_ui()
+        try:
+            logger.info("در حال ساخت صفحه LoginScreen")
+            super().__init__(**kwargs)
+            self.build_ui()
+            logger.info("صفحه LoginScreen با موفقیت ساخته شد")
+        except Exception as e:
+            logger.error("خطا در ساخت LoginScreen", e)
+            raise
     
     def build_ui(self):
-        layout = BoxLayout(orientation='vertical', spacing=20, padding=40)
-        
-        # هدر با دکمه تنظیمات
-        header_layout = BoxLayout(size_hint_y=0.1, spacing=10)
-        settings_btn = Button(text='⚙️', size_hint_x=0.2, background_color=(0.3, 0.3, 0.3, 1))
-        settings_btn.bind(on_press=self.open_settings)
-        header_layout.add_widget(settings_btn)
-        header_layout.add_widget(Label(text='', size_hint_x=0.6))
-        header_layout.add_widget(Label(text='', size_hint_x=0.2))
-        layout.add_widget(header_layout)
-        
-        # عنوان
-        title = Label(text=f('مدیریت فروش'), font_size='28sp', size_hint_y=0.2)
-        layout.add_widget(title)
-        
-        # فیلدهای ورود
-        self.username = RTLTextInput(hint_text='نام کاربری', size_hint_y=None, height=50)
-        layout.add_widget(self.username)
-        
-        self.password = RTLTextInput(hint_text='رمز عبور', password=True, size_hint_y=None, height=50)
-        layout.add_widget(self.password)
-        
-        # دکمه‌ها
-        btn = Button(text=f('ورود'), size_hint_y=None, height=50)
-        btn.bind(on_press=self.check_login)
-        layout.add_widget(btn)
-        
-        register_btn = Button(text=f('ثبت نام'), size_hint_y=None, height=40, background_color=(0.3, 0.6, 0.3, 1))
-        register_btn.bind(on_press=self.open_register)
-        layout.add_widget(register_btn)
-        
-        self.add_widget(layout)
+        try:
+            layout = BoxLayout(orientation='vertical', spacing=20, padding=40)
+            
+            # هدر با دکمه تنظیمات
+            header_layout = BoxLayout(size_hint_y=0.1, spacing=10)
+            settings_btn = Button(text='⚙️', size_hint_x=0.2, background_color=(0.3, 0.3, 0.3, 1))
+            settings_btn.bind(on_press=self.open_settings)
+            header_layout.add_widget(settings_btn)
+            header_layout.add_widget(Label(text='', size_hint_x=0.6))
+            header_layout.add_widget(Label(text='', size_hint_x=0.2))
+            layout.add_widget(header_layout)
+            
+            # عنوان
+            title = Label(text=f('مدیریت فروش'), font_size='28sp', size_hint_y=0.2)
+            layout.add_widget(title)
+            
+            # فیلدهای ورود
+            self.username = RTLTextInput(hint_text='نام کاربری', size_hint_y=None, height=50)
+            layout.add_widget(self.username)
+            
+            self.password = RTLTextInput(hint_text='رمز عبور', password=True, size_hint_y=None, height=50)
+            layout.add_widget(self.password)
+            
+            # دکمه‌ها
+            btn = Button(text=f('ورود'), size_hint_y=None, height=50)
+            btn.bind(on_press=self.check_login)
+            layout.add_widget(btn)
+            
+            register_btn = Button(text=f('ثبت نام'), size_hint_y=None, height=40, background_color=(0.3, 0.6, 0.3, 1))
+            register_btn.bind(on_press=self.open_register)
+            layout.add_widget(register_btn)
+            
+            self.add_widget(layout)
+            logger.info("UI صفحه LoginScreen ساخته شد")
+        except Exception as e:
+            logger.error("خطا در ساخت UI LoginScreen", e)
+            raise
     
     def open_settings(self, instance):
+        logger.info("باز شدن صفحه تنظیمات")
         self.manager.current = 'settings_login'
     
     def open_register(self, instance):
+        logger.info("باز شدن صفحه ثبت نام")
         self.manager.current = 'register'
     
     def check_login(self, instance):
-        user = login(self.username.text, self.password.text)
-        if user:
-            if user.get('role') == 'مدیر':
-                self.manager.current = 'admin'
+        try:
+            logger.info(f"تلاش برای ورود کاربر: {self.username.text}")
+            user = login(self.username.text, self.password.text)
+            if user:
+                logger.info(f"کاربر {self.username.text} با نقش {user.get('role')} وارد شد")
+                if user.get('role') == 'مدیر':
+                    self.manager.current = 'admin'
+                else:
+                    self.manager.current = 'user'
             else:
-                self.manager.current = 'user'
-        else:
-            self.show_message('خطا', 'نام کاربری یا رمز عبور اشتباه است')
+                logger.warning(f"ورود ناموفق برای کاربر: {self.username.text}")
+                self.show_message('خطا', 'نام کاربری یا رمز عبور اشتباه است')
+        except Exception as e:
+            logger.error(f"خطا در ورود کاربر {self.username.text}", e)
+            self.show_message('خطا', f'خطا در ورود: {str(e)}')
     
     def show_message(self, title, message):
-        content = BoxLayout(orientation='vertical', padding=20, spacing=10)
-        content.add_widget(Label(text=f(message), size_hint_y=None, height=50))
-        btn = Button(text=f('باشه'), size_hint_y=None, height=40)
-        content.add_widget(btn)
-        popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
-        btn.bind(on_press=popup.dismiss)
-        popup.open()
+        try:
+            content = BoxLayout(orientation='vertical', padding=20, spacing=10)
+            content.add_widget(Label(text=f(message), size_hint_y=None, height=50))
+            btn = Button(text=f('باشه'), size_hint_y=None, height=40)
+            content.add_widget(btn)
+            popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
+            btn.bind(on_press=popup.dismiss)
+            popup.open()
+            logger.info(f"نمایش پیام: {title} - {message}")
+        except Exception as e:
+            logger.error(f"خطا در نمایش پیام", e)
 
 
 class RegisterScreen(Screen):
     """صفحه ثبت نام کاربر جدید"""
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.build_ui()
+        try:
+            logger.info("در حال ساخت صفحه RegisterScreen")
+            super().__init__(**kwargs)
+            self.build_ui()
+            logger.info("صفحه RegisterScreen با موفقیت ساخته شد")
+        except Exception as e:
+            logger.error("خطا در ساخت RegisterScreen", e)
+            raise
     
     def build_ui(self):
-        layout = BoxLayout(orientation='vertical', spacing=15, padding=40)
-        
-        title = Label(text=f('ثبت نام کاربر جدید'), font_size='24sp', size_hint_y=0.1)
-        layout.add_widget(title)
-        
-        self.code_input = RTLTextInput(hint_text='کد ثبت نام', multiline=False, size_hint_y=None, height=50)
-        layout.add_widget(self.code_input)
-        
-        self.username = RTLTextInput(hint_text='نام کاربری', multiline=False, size_hint_y=None, height=50)
-        layout.add_widget(self.username)
-        
-        self.password = RTLTextInput(hint_text='رمز عبور', password=True, multiline=False, size_hint_y=None, height=50)
-        layout.add_widget(self.password)
-        
-        self.confirm_password = RTLTextInput(hint_text='تکرار رمز عبور', password=True, multiline=False, size_hint_y=None, height=50)
-        layout.add_widget(self.confirm_password)
-        
-        self.phone = RTLTextInput(hint_text='شماره تلفن', multiline=False, size_hint_y=None, height=50)
-        layout.add_widget(self.phone)
-        
-        self.email = RTLTextInput(hint_text='ایمیل', multiline=False, size_hint_y=None, height=50)
-        layout.add_widget(self.email)
-        
-        btn_layout = BoxLayout(spacing=10, size_hint_y=None, height=50)
-        register_btn = Button(text=f('ثبت نام'), background_color=(0.2, 0.7, 0.2, 1))
-        register_btn.bind(on_press=self.do_register)
-        btn_layout.add_widget(register_btn)
-        
-        back_btn = Button(text=f('بازگشت'), background_color=(0.5, 0.5, 0.5, 1))
-        back_btn.bind(on_press=self.go_back)
-        btn_layout.add_widget(back_btn)
-        
-        layout.add_widget(btn_layout)
-        self.add_widget(layout)
+        try:
+            layout = BoxLayout(orientation='vertical', spacing=15, padding=40)
+            
+            title = Label(text=f('ثبت نام کاربر جدید'), font_size='24sp', size_hint_y=0.1)
+            layout.add_widget(title)
+            
+            self.code_input = RTLTextInput(hint_text='کد ثبت نام', multiline=False, size_hint_y=None, height=50)
+            layout.add_widget(self.code_input)
+            
+            self.username = RTLTextInput(hint_text='نام کاربری', multiline=False, size_hint_y=None, height=50)
+            layout.add_widget(self.username)
+            
+            self.password = RTLTextInput(hint_text='رمز عبور', password=True, multiline=False, size_hint_y=None, height=50)
+            layout.add_widget(self.password)
+            
+            self.confirm_password = RTLTextInput(hint_text='تکرار رمز عبور', password=True, multiline=False, size_hint_y=None, height=50)
+            layout.add_widget(self.confirm_password)
+            
+            self.phone = RTLTextInput(hint_text='شماره تلفن', multiline=False, size_hint_y=None, height=50)
+            layout.add_widget(self.phone)
+            
+            self.email = RTLTextInput(hint_text='ایمیل', multiline=False, size_hint_y=None, height=50)
+            layout.add_widget(self.email)
+            
+            btn_layout = BoxLayout(spacing=10, size_hint_y=None, height=50)
+            register_btn = Button(text=f('ثبت نام'), background_color=(0.2, 0.7, 0.2, 1))
+            register_btn.bind(on_press=self.do_register)
+            btn_layout.add_widget(register_btn)
+            
+            back_btn = Button(text=f('بازگشت'), background_color=(0.5, 0.5, 0.5, 1))
+            back_btn.bind(on_press=self.go_back)
+            btn_layout.add_widget(back_btn)
+            
+            layout.add_widget(btn_layout)
+            self.add_widget(layout)
+            logger.info("UI صفحه RegisterScreen ساخته شد")
+        except Exception as e:
+            logger.error("خطا در ساخت UI RegisterScreen", e)
+            raise
     
     def do_register(self, instance):
-        if self.password.text != self.confirm_password.text:
-            self.show_message('خطا', 'رمز عبور و تکرار آن مطابقت ندارند')
-            return
-        
-        success, message = register_user(
-            self.code_input.text,
-            self.username.text,
-            self.password.text,
-            self.phone.text,
-            self.email.text
-        )
-        
-        if success:
-            self.show_message('موفق', message)
-            self.manager.current = 'login'
-        else:
-            self.show_message('خطا', message)
+        try:
+            logger.info(f"تلاش برای ثبت نام کاربر: {self.username.text}")
+            if self.password.text != self.confirm_password.text:
+                self.show_message('خطا', 'رمز عبور و تکرار آن مطابقت ندارند')
+                return
+            
+            success, message = register_user(
+                self.code_input.text,
+                self.username.text,
+                self.password.text,
+                self.phone.text,
+                self.email.text
+            )
+            
+            if success:
+                logger.info(f"ثبت نام موفق برای کاربر: {self.username.text}")
+                self.show_message('موفق', message)
+                self.manager.current = 'login'
+            else:
+                logger.warning(f"ثبت نام ناموفق برای کاربر: {self.username.text} - {message}")
+                self.show_message('خطا', message)
+        except Exception as e:
+            logger.error(f"خطا در ثبت نام کاربر {self.username.text}", e)
+            self.show_message('خطا', f'خطا در ثبت نام: {str(e)}')
     
     def go_back(self, instance):
+        logger.info("بازگشت از صفحه ثبت نام")
         self.manager.current = 'login'
     
     def show_message(self, title, message):
-        content = BoxLayout(orientation='vertical', padding=20, spacing=10)
-        content.add_widget(Label(text=f(message), size_hint_y=None, height=50))
-        btn = Button(text=f('باشه'), size_hint_y=None, height=40)
-        content.add_widget(btn)
-        popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
-        btn.bind(on_press=popup.dismiss)
-        popup.open()
+        try:
+            content = BoxLayout(orientation='vertical', padding=20, spacing=10)
+            content.add_widget(Label(text=f(message), size_hint_y=None, height=50))
+            btn = Button(text=f('باشه'), size_hint_y=None, height=40)
+            content.add_widget(btn)
+            popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
+            btn.bind(on_press=popup.dismiss)
+            popup.open()
+        except Exception as e:
+            logger.error(f"خطا در نمایش پیام", e)
 
+
+# ========== کلاس‌های اصلی برنامه (بدون تغییر) ==========
 
 class AdminSettingsScreen(Screen):
     """تنظیمات مدیر"""
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.build_ui()
+        try:
+            logger.info("در حال ساخت صفحه AdminSettingsScreen")
+            super().__init__(**kwargs)
+            self.build_ui()
+            logger.info("صفحه AdminSettingsScreen با موفقیت ساخته شد")
+        except Exception as e:
+            logger.error("خطا در ساخت AdminSettingsScreen", e)
+            raise
     
     def build_ui(self):
-        layout = BoxLayout(orientation='vertical')
-        
-        header = Label(text=f('تنظیمات سیستم'), size_hint_y=0.07, font_size='20sp')
-        layout.add_widget(header)
-        
-        tabs_layout = BoxLayout(size_hint_y=0.08, spacing=2)
-        
-        btn_users = Button(text=f('مدیریت کاربران'), background_color=(0.3, 0.5, 0.8, 1))
-        btn_users.bind(on_press=lambda x: self.switch_tab(0))
-        tabs_layout.add_widget(btn_users)
-        
-        btn_codes = Button(text=f('کدهای ثبت نام'), background_color=(0.3, 0.5, 0.8, 0.6))
-        btn_codes.bind(on_press=lambda x: self.switch_tab(1))
-        tabs_layout.add_widget(btn_codes)
-        
-        btn_general = Button(text=f('تنظیمات عمومی'), background_color=(0.3, 0.5, 0.8, 0.6))
-        btn_general.bind(on_press=lambda x: self.switch_tab(2))
-        tabs_layout.add_widget(btn_general)
-        
-        btn_password = Button(text=f('تغییر رمز'), background_color=(0.3, 0.5, 0.8, 0.6))
-        btn_password.bind(on_press=lambda x: self.switch_tab(3))
-        tabs_layout.add_widget(btn_password)
-        
-        layout.add_widget(tabs_layout)
-        
-        self.content_area = BoxLayout(orientation='vertical')
-        layout.add_widget(self.content_area)
-        
-        back_btn = Button(text=f('بازگشت'), size_hint_y=0.07, background_color=(0.5, 0.5, 0.5, 1))
-        back_btn.bind(on_press=self.go_back)
-        layout.add_widget(back_btn)
-        
-        self.add_widget(layout)
-        self.switch_tab(0)
+        try:
+            layout = BoxLayout(orientation='vertical')
+            
+            header = Label(text=f('تنظیمات سیستم'), size_hint_y=0.07, font_size='20sp')
+            layout.add_widget(header)
+            
+            tabs_layout = BoxLayout(size_hint_y=0.08, spacing=2)
+            
+            btn_users = Button(text=f('مدیریت کاربران'), background_color=(0.3, 0.5, 0.8, 1))
+            btn_users.bind(on_press=lambda x: self.switch_tab(0))
+            tabs_layout.add_widget(btn_users)
+            
+            btn_codes = Button(text=f('کدهای ثبت نام'), background_color=(0.3, 0.5, 0.8, 0.6))
+            btn_codes.bind(on_press=lambda x: self.switch_tab(1))
+            tabs_layout.add_widget(btn_codes)
+            
+            btn_general = Button(text=f('تنظیمات عمومی'), background_color=(0.3, 0.5, 0.8, 0.6))
+            btn_general.bind(on_press=lambda x: self.switch_tab(2))
+            tabs_layout.add_widget(btn_general)
+            
+            btn_password = Button(text=f('تغییر رمز'), background_color=(0.3, 0.5, 0.8, 0.6))
+            btn_password.bind(on_press=lambda x: self.switch_tab(3))
+            tabs_layout.add_widget(btn_password)
+            
+            layout.add_widget(tabs_layout)
+            
+            self.content_area = BoxLayout(orientation='vertical')
+            layout.add_widget(self.content_area)
+            
+            back_btn = Button(text=f('بازگشت'), size_hint_y=0.07, background_color=(0.5, 0.5, 0.5, 1))
+            back_btn.bind(on_press=self.go_back)
+            layout.add_widget(back_btn)
+            
+            self.add_widget(layout)
+            self.switch_tab(0)
+            logger.info("UI صفحه AdminSettingsScreen ساخته شد")
+        except Exception as e:
+            logger.error("خطا در ساخت UI AdminSettingsScreen", e)
+            raise
     
     def switch_tab(self, tab_id):
-        self.content_area.clear_widgets()
-        
-        if tab_id == 0:
-            self.show_users_tab()
-        elif tab_id == 1:
-            self.show_codes_tab()
-        elif tab_id == 2:
-            self.show_general_settings_tab()
-        elif tab_id == 3:
-            self.show_change_password_tab()
+        try:
+            self.content_area.clear_widgets()
+            
+            if tab_id == 0:
+                self.show_users_tab()
+            elif tab_id == 1:
+                self.show_codes_tab()
+            elif tab_id == 2:
+                self.show_general_settings_tab()
+            elif tab_id == 3:
+                self.show_change_password_tab()
+        except Exception as e:
+            logger.error(f"خطا در تغییر تب {tab_id}", e)
+            self.show_message('خطا', f'خطا در بارگذاری تب: {str(e)}')
     
     def show_change_password_tab(self):
-        layout = BoxLayout(orientation='vertical', padding=30, spacing=15)
-        
-        layout.add_widget(Label(text=f('تغییر رمز عبور مدیر'), size_hint_y=None, height=50, font_size='18sp', bold=True))
-        layout.add_widget(Label(text=f('رمز عبور فعلی:'), size_hint_y=None, height=30))
-        self.old_password = RTLTextInput(password=True, multiline=False, size_hint_y=None, height=45)
-        layout.add_widget(self.old_password)
-        
-        layout.add_widget(Label(text=f('رمز عبور جدید:'), size_hint_y=None, height=30))
-        self.new_password = RTLTextInput(password=True, multiline=False, size_hint_y=None, height=45)
-        layout.add_widget(self.new_password)
-        
-        layout.add_widget(Label(text=f('تکرار رمز عبور جدید:'), size_hint_y=None, height=30))
-        self.confirm_password = RTLTextInput(password=True, multiline=False, size_hint_y=None, height=45)
-        layout.add_widget(self.confirm_password)
-        
-        btn_layout = BoxLayout(spacing=10, size_hint_y=None, height=50, padding=(0, 20, 0, 0))
-        save_btn = Button(text=f('تغییر رمز'), background_color=(0.2, 0.7, 0.2, 1))
-        save_btn.bind(on_press=self.change_password)
-        btn_layout.add_widget(save_btn)
-        
-        clear_btn = Button(text=f('پاک کردن'), background_color=(0.8, 0.5, 0.2, 1))
-        clear_btn.bind(on_press=self.clear_password_fields)
-        btn_layout.add_widget(clear_btn)
-        
-        layout.add_widget(btn_layout)
-        self.content_area.add_widget(layout)
+        try:
+            layout = BoxLayout(orientation='vertical', padding=30, spacing=15)
+            
+            layout.add_widget(Label(text=f('تغییر رمز عبور مدیر'), size_hint_y=None, height=50, font_size='18sp', bold=True))
+            layout.add_widget(Label(text=f('رمز عبور فعلی:'), size_hint_y=None, height=30))
+            self.old_password = RTLTextInput(password=True, multiline=False, size_hint_y=None, height=45)
+            layout.add_widget(self.old_password)
+            
+            layout.add_widget(Label(text=f('رمز عبور جدید:'), size_hint_y=None, height=30))
+            self.new_password = RTLTextInput(password=True, multiline=False, size_hint_y=None, height=45)
+            layout.add_widget(self.new_password)
+            
+            layout.add_widget(Label(text=f('تکرار رمز عبور جدید:'), size_hint_y=None, height=30))
+            self.confirm_password = RTLTextInput(password=True, multiline=False, size_hint_y=None, height=45)
+            layout.add_widget(self.confirm_password)
+            
+            btn_layout = BoxLayout(spacing=10, size_hint_y=None, height=50, padding=(0, 20, 0, 0))
+            save_btn = Button(text=f('تغییر رمز'), background_color=(0.2, 0.7, 0.2, 1))
+            save_btn.bind(on_press=self.change_password)
+            btn_layout.add_widget(save_btn)
+            
+            clear_btn = Button(text=f('پاک کردن'), background_color=(0.8, 0.5, 0.2, 1))
+            clear_btn.bind(on_press=self.clear_password_fields)
+            btn_layout.add_widget(clear_btn)
+            
+            layout.add_widget(btn_layout)
+            self.content_area.add_widget(layout)
+        except Exception as e:
+            logger.error("خطا در نمایش تب تغییر رمز", e)
+            raise
     
     def change_password(self, instance):
-        old = self.old_password.text
-        new = self.new_password.text
-        confirm = self.confirm_password.text
-        
-        hashed = get_admin_password()
-        if not hashed or not verify_password(old, hashed):
-            self.show_message('خطا', 'رمز عبور فعلی اشتباه است')
-            return
-        
-        if len(new) < 6:
-            self.show_message('خطا', 'رمز عبور جدید باید حداقل 6 کاراکتر باشد')
-            return
-        
-        if new != confirm:
-            self.show_message('خطا', 'رمز عبور جدید و تکرار آن مطابقت ندارند')
-            return
-        
-        set_admin_password(new)
-        self.clear_password_fields(instance)
-        self.show_message('موفق', 'رمز عبور با موفقیت تغییر کرد')
+        try:
+            old = self.old_password.text
+            new = self.new_password.text
+            confirm = self.confirm_password.text
+            
+            hashed = get_admin_password()
+            if not hashed or not verify_password(old, hashed):
+                self.show_message('خطا', 'رمز عبور فعلی اشتباه است')
+                return
+            
+            if len(new) < 6:
+                self.show_message('خطا', 'رمز عبور جدید باید حداقل 6 کاراکتر باشد')
+                return
+            
+            if new != confirm:
+                self.show_message('خطا', 'رمز عبور جدید و تکرار آن مطابقت ندارند')
+                return
+            
+            set_admin_password(new)
+            self.clear_password_fields(instance)
+            self.show_message('موفق', 'رمز عبور با موفقیت تغییر کرد')
+            logger.info("رمز عبور مدیر با موفقیت تغییر کرد")
+        except Exception as e:
+            logger.error("خطا در تغییر رمز عبور", e)
+            self.show_message('خطا', f'خطا در تغییر رمز: {str(e)}')
     
     def clear_password_fields(self, instance):
         self.old_password.text = ''
@@ -341,833 +525,986 @@ class AdminSettingsScreen(Screen):
         self.confirm_password.text = ''
     
     def show_users_tab(self):
-        users = get_users()
-        
-        layout = ScrollView()
-        content = GridLayout(cols=1, spacing=10, size_hint_y=None, padding=10)
-        content.bind(minimum_height=content.setter('height'))
-        
-        content.add_widget(Label(text=f('📋 لیست کاربران'), size_hint_y=None, height=40, font_size='16sp', bold=True))
-        
-        for user in users:
-            user_box = BoxLayout(size_hint_y=None, height=80, spacing=5)
-            info = f"{user.get('username', '')}\n{user.get('name', '')}\n{user.get('role', '')}"
-            user_info = Label(text=f(info), size_hint_x=0.7)
-            user_box.add_widget(user_info)
+        try:
+            users = get_users()
             
-            del_btn = Button(text=f('حذف'), size_hint_x=0.3, background_color=(0.8, 0.2, 0.2, 1))
-            del_btn.bind(on_press=lambda x, uid=user.get('id'): self.delete_user(uid))
-            user_box.add_widget(del_btn)
-            content.add_widget(user_box)
-        
-        layout.add_widget(content)
-        self.content_area.add_widget(layout)
+            layout = ScrollView()
+            content = GridLayout(cols=1, spacing=10, size_hint_y=None, padding=10)
+            content.bind(minimum_height=content.setter('height'))
+            
+            content.add_widget(Label(text=f('📋 لیست کاربران'), size_hint_y=None, height=40, font_size='16sp', bold=True))
+            
+            for user in users:
+                user_box = BoxLayout(size_hint_y=None, height=80, spacing=5)
+                info = f"{user.get('username', '')}\n{user.get('name', '')}\n{user.get('role', '')}"
+                user_info = Label(text=f(info), size_hint_x=0.7)
+                user_box.add_widget(user_info)
+                
+                del_btn = Button(text=f('حذف'), size_hint_x=0.3, background_color=(0.8, 0.2, 0.2, 1))
+                del_btn.bind(on_press=lambda x, uid=user.get('id'): self.delete_user(uid))
+                user_box.add_widget(del_btn)
+                content.add_widget(user_box)
+            
+            layout.add_widget(content)
+            self.content_area.add_widget(layout)
+        except Exception as e:
+            logger.error("خطا در نمایش کاربران", e)
+            self.show_message('خطا', f'خطا در بارگذاری کاربران: {str(e)}')
     
     def delete_user(self, user_id):
-        users = get_users()
-        username = ""
-        for user in users:
-            if user.get('id') == user_id:
-                username = user.get('username', '')
-                break
-        
-        content = BoxLayout(orientation='vertical', padding=20, spacing=15)
-        content.add_widget(Label(text=f(f'آیا از حذف کاربر "{username}" مطمئن هستید؟'), size_hint_y=None, height=50))
-        
-        btn_layout = BoxLayout(spacing=10, size_hint_y=None, height=50)
-        yes_btn = Button(text=f('بله، حذف شود'))
-        no_btn = Button(text=f('خیر، انصراف'))
-        btn_layout.add_widget(yes_btn)
-        btn_layout.add_widget(no_btn)
-        content.add_widget(btn_layout)
-        
-        popup = Popup(title=f('تایید حذف'), content=content, size_hint=(0.8, 0.35))
-        
-        def do_delete(instance):
-            delete_user_by_id(user_id)
-            popup.dismiss()
-            self.show_message('موفق', f'کاربر "{username}" با موفقیت حذف شد')
-            self.switch_tab(0)
-        
-        def cancel_delete(instance):
-            popup.dismiss()
-        
-        yes_btn.bind(on_press=do_delete)
-        no_btn.bind(on_press=cancel_delete)
-        popup.open()
+        try:
+            users = get_users()
+            username = ""
+            for user in users:
+                if user.get('id') == user_id:
+                    username = user.get('username', '')
+                    break
+            
+            content = BoxLayout(orientation='vertical', padding=20, spacing=15)
+            content.add_widget(Label(text=f(f'آیا از حذف کاربر "{username}" مطمئن هستید؟'), size_hint_y=None, height=50))
+            
+            btn_layout = BoxLayout(spacing=10, size_hint_y=None, height=50)
+            yes_btn = Button(text=f('بله، حذف شود'))
+            no_btn = Button(text=f('خیر، انصراف'))
+            btn_layout.add_widget(yes_btn)
+            btn_layout.add_widget(no_btn)
+            content.add_widget(btn_layout)
+            
+            popup = Popup(title=f('تایید حذف'), content=content, size_hint=(0.8, 0.35))
+            
+            def do_delete(instance):
+                delete_user_by_id(user_id)
+                popup.dismiss()
+                self.show_message('موفق', f'کاربر "{username}" با موفقیت حذف شد')
+                self.switch_tab(0)
+                logger.info(f"کاربر {username} حذف شد")
+            
+            def cancel_delete(instance):
+                popup.dismiss()
+            
+            yes_btn.bind(on_press=do_delete)
+            no_btn.bind(on_press=cancel_delete)
+            popup.open()
+        except Exception as e:
+            logger.error(f"خطا در حذف کاربر {user_id}", e)
+            self.show_message('خطا', f'خطا در حذف کاربر: {str(e)}')
     
     def show_codes_tab(self):
-        roles = ['مدیر', 'ادمین', 'سوپروایزر', 'بازاریاب', 'حسابدار', 'موزع', 'راننده', 'انباردار', 'سایر']
-        
-        layout = ScrollView()
-        content = GridLayout(cols=1, spacing=10, size_hint_y=None, padding=10)
-        content.bind(minimum_height=content.setter('height'))
-        
-        content.add_widget(Label(text=f('➕ ایجاد کد جدید'), size_hint_y=None, height=40, font_size='16sp', bold=True))
-        
-        role_spinner = RTLSpinner(text=roles[0], values=roles, size_hint_y=None, height=45)
-        content.add_widget(role_spinner)
-        
-        name_input = RTLTextInput(hint_text='نام و نام خانوادگی', multiline=False, size_hint_y=None, height=45)
-        content.add_widget(name_input)
-        
-        create_btn = Button(text=f('ساخت کد'), size_hint_y=None, height=45, background_color=(0.2, 0.7, 0.2, 1))
-        content.add_widget(create_btn)
-        
-        content.add_widget(Label(text=f('📋 کدهای فعال'), size_hint_y=None, height=40, font_size='16sp', bold=True))
-        
-        codes = get_codes()
-        for code_info in codes:
-            if not code_info.get('used', False):
-                code_box = BoxLayout(size_hint_y=None, height=50, spacing=5)
-                code_text = f"{code_info['code']} - {code_info['role']} - {code_info['name']}"
-                code_label = Label(text=f(code_text), size_hint_x=0.8)
-                code_box.add_widget(code_label)
-                content.add_widget(code_box)
-        
-        def do_create(instance):
-            code = create_code(role_spinner.text, name_input.text)
-            self.show_message('موفق', f'کد ساخته شد:\n{code}')
-            self.switch_tab(1)
-        
-        create_btn.bind(on_press=do_create)
-        
-        layout.add_widget(content)
-        self.content_area.add_widget(layout)
+        try:
+            roles = ['مدیر', 'ادمین', 'سوپروایزر', 'بازاریاب', 'حسابدار', 'موزع', 'راننده', 'انباردار', 'سایر']
+            
+            layout = ScrollView()
+            content = GridLayout(cols=1, spacing=10, size_hint_y=None, padding=10)
+            content.bind(minimum_height=content.setter('height'))
+            
+            content.add_widget(Label(text=f('➕ ایجاد کد جدید'), size_hint_y=None, height=40, font_size='16sp', bold=True))
+            
+            role_spinner = RTLSpinner(text=roles[0], values=roles, size_hint_y=None, height=45)
+            content.add_widget(role_spinner)
+            
+            name_input = RTLTextInput(hint_text='نام و نام خانوادگی', multiline=False, size_hint_y=None, height=45)
+            content.add_widget(name_input)
+            
+            create_btn = Button(text=f('ساخت کد'), size_hint_y=None, height=45, background_color=(0.2, 0.7, 0.2, 1))
+            content.add_widget(create_btn)
+            
+            content.add_widget(Label(text=f('📋 کدهای فعال'), size_hint_y=None, height=40, font_size='16sp', bold=True))
+            
+            codes = get_codes()
+            for code_info in codes:
+                if not code_info.get('used', False):
+                    code_box = BoxLayout(size_hint_y=None, height=50, spacing=5)
+                    code_text = f"{code_info['code']} - {code_info['role']} - {code_info['name']}"
+                    code_label = Label(text=f(code_text), size_hint_x=0.8)
+                    code_box.add_widget(code_label)
+                    content.add_widget(code_box)
+            
+            def do_create(instance):
+                try:
+                    code = create_code(role_spinner.text, name_input.text)
+                    self.show_message('موفق', f'کد ساخته شد:\n{code}')
+                    self.switch_tab(1)
+                    logger.info(f"کد جدید ساخته شد: {code}")
+                except Exception as e:
+                    logger.error("خطا در ساخت کد", e)
+                    self.show_message('خطا', f'خطا در ساخت کد: {str(e)}')
+            
+            create_btn.bind(on_press=do_create)
+            
+            layout.add_widget(content)
+            self.content_area.add_widget(layout)
+        except Exception as e:
+            logger.error("خطا در نمایش کدها", e)
+            self.show_message('خطا', f'خطا در بارگذاری کدها: {str(e)}')
     
     def show_general_settings_tab(self):
-        settings = get_settings()
-        
-        layout = ScrollView()
-        content = GridLayout(cols=2, spacing=10, size_hint_y=None, padding=10)
-        content.bind(minimum_height=content.setter('height'))
-        
-        fields = [
-            ('supervision_rate', 'درصد سرکشی', '0.3'),
-            ('conversion_rate', 'نرخ تبدیل', '0.25'),
-            ('avg_invoice_amount', 'میانگین مبلغ فاکتور', '1000000'),
-            ('target_amount', 'تارگت ریالی', '50000000'),
-            ('work_start_time', 'ساعت شروع کار', '08:00'),
-            ('min_daily_hours', 'حداقل ساعت کاری', '6'),
-        ]
-        
-        inputs = {}
-        for key, label, default in fields:
-            content.add_widget(Label(text=f(label + ':'), size_hint_y=None, height=45))
-            input_field = RTLTextInput(text=str(settings.get(key, default)), multiline=False, size_hint_y=None, height=45)
-            content.add_widget(input_field)
-            inputs[key] = input_field
-        
-        save_btn = Button(text=f('ذخیره تنظیمات'), size_hint_y=None, height=50, background_color=(0.2, 0.6, 1, 1))
-        content.add_widget(save_btn)
-        
-        layout.add_widget(content)
-        self.content_area.add_widget(layout)
-        save_btn.bind(on_press=lambda x: self.save_settings(inputs))
+        try:
+            settings = get_settings()
+            
+            layout = ScrollView()
+            content = GridLayout(cols=2, spacing=10, size_hint_y=None, padding=10)
+            content.bind(minimum_height=content.setter('height'))
+            
+            fields = [
+                ('supervision_rate', 'درصد سرکشی', '0.3'),
+                ('conversion_rate', 'نرخ تبدیل', '0.25'),
+                ('avg_invoice_amount', 'میانگین مبلغ فاکتور', '1000000'),
+                ('target_amount', 'تارگت ریالی', '50000000'),
+                ('work_start_time', 'ساعت شروع کار', '08:00'),
+                ('min_daily_hours', 'حداقل ساعت کاری', '6'),
+            ]
+            
+            inputs = {}
+            for key, label, default in fields:
+                content.add_widget(Label(text=f(label + ':'), size_hint_y=None, height=45))
+                input_field = RTLTextInput(text=str(settings.get(key, default)), multiline=False, size_hint_y=None, height=45)
+                content.add_widget(input_field)
+                inputs[key] = input_field
+            
+            save_btn = Button(text=f('ذخیره تنظیمات'), size_hint_y=None, height=50, background_color=(0.2, 0.6, 1, 1))
+            content.add_widget(save_btn)
+            
+            layout.add_widget(content)
+            self.content_area.add_widget(layout)
+            save_btn.bind(on_press=lambda x: self.save_settings(inputs))
+        except Exception as e:
+            logger.error("خطا در نمایش تنظیمات عمومی", e)
+            self.show_message('خطا', f'خطا در بارگذاری تنظیمات: {str(e)}')
     
     def save_settings(self, inputs):
-        settings = {}
-        for key, input_field in inputs.items():
-            value = input_field.text
-            if key in ['supervision_rate', 'conversion_rate']:
-                try:
-                    value = float(value)
-                except:
-                    value = 0
-            elif key in ['avg_invoice_amount', 'target_amount', 'min_daily_hours']:
-                try:
-                    value = int(value)
-                except:
-                    value = 0
-            settings[key] = value
-        update_settings(settings)
-        self.show_message('موفق', 'تنظیمات ذخیره شد')
+        try:
+            settings = {}
+            for key, input_field in inputs.items():
+                value = input_field.text
+                if key in ['supervision_rate', 'conversion_rate']:
+                    try:
+                        value = float(value)
+                    except:
+                        value = 0
+                elif key in ['avg_invoice_amount', 'target_amount', 'min_daily_hours']:
+                    try:
+                        value = int(value)
+                    except:
+                        value = 0
+                settings[key] = value
+            update_settings(settings)
+            self.show_message('موفق', 'تنظیمات ذخیره شد')
+            logger.info("تنظیمات عمومی ذخیره شد")
+        except Exception as e:
+            logger.error("خطا در ذخیره تنظیمات", e)
+            self.show_message('خطا', f'خطا در ذخیره تنظیمات: {str(e)}')
     
     def show_message(self, title, message):
-        content = BoxLayout(orientation='vertical', padding=20, spacing=10)
-        content.add_widget(Label(text=f(message), size_hint_y=None, height=50))
-        btn = Button(text=f('باشه'), size_hint_y=None, height=40)
-        content.add_widget(btn)
-        popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
-        btn.bind(on_press=popup.dismiss)
-        popup.open()
+        try:
+            content = BoxLayout(orientation='vertical', padding=20, spacing=10)
+            content.add_widget(Label(text=f(message), size_hint_y=None, height=50))
+            btn = Button(text=f('باشه'), size_hint_y=None, height=40)
+            content.add_widget(btn)
+            popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
+            btn.bind(on_press=popup.dismiss)
+            popup.open()
+        except Exception as e:
+            logger.error(f"خطا در نمایش پیام", e)
     
     def go_back(self, instance):
+        logger.info("بازگشت از صفحه تنظیمات مدیر")
         self.manager.current = 'login'
 
 
 class AdminScreen(Screen):
     """پنل مدیریت"""
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.current_tab = 0
-        self.build_ui()
+        try:
+            logger.info("در حال ساخت صفحه AdminScreen")
+            super().__init__(**kwargs)
+            self.current_tab = 0
+            self.build_ui()
+            logger.info("صفحه AdminScreen با موفقیت ساخته شد")
+        except Exception as e:
+            logger.error("خطا در ساخت AdminScreen", e)
+            raise
     
     def build_ui(self):
-        main_layout = BoxLayout(orientation='vertical')
-        
-        header = Label(text=f('پنل مدیریت'), size_hint_y=0.07, font_size='20sp')
-        main_layout.add_widget(header)
-        
-        tabs_layout = BoxLayout(size_hint_y=0.08, spacing=2)
-        
-        btn_agents = Button(text=f('عامل‌ها'), background_color=(0.3, 0.5, 0.8, 1))
-        btn_agents.bind(on_press=lambda x: self.switch_tab(0))
-        tabs_layout.add_widget(btn_agents)
-        
-        btn_routes = Button(text=f('مسیرها'), background_color=(0.3, 0.5, 0.8, 0.6))
-        btn_routes.bind(on_press=lambda x: self.switch_tab(1))
-        tabs_layout.add_widget(btn_routes)
-        
-        btn_customers = Button(text=f('مشتریان'), background_color=(0.3, 0.5, 0.8, 0.6))
-        btn_customers.bind(on_press=lambda x: self.switch_tab(2))
-        tabs_layout.add_widget(btn_customers)
-        
-        btn_settings = Button(text=f('⚙️ تنظیمات'), background_color=(0.3, 0.5, 0.8, 0.6))
-        btn_settings.bind(on_press=lambda x: self.switch_tab(3))
-        tabs_layout.add_widget(btn_settings)
-        
-        main_layout.add_widget(tabs_layout)
-        
-        self.content_area = BoxLayout(orientation='vertical')
-        main_layout.add_widget(self.content_area)
-        
-        logout_btn = Button(text=f('خروج'), size_hint_y=0.07, background_color=(0.8, 0.2, 0.2, 1))
-        logout_btn.bind(on_press=self.logout)
-        main_layout.add_widget(logout_btn)
-        
-        self.add_widget(main_layout)
-        self.switch_tab(0)
+        try:
+            main_layout = BoxLayout(orientation='vertical')
+            
+            header = Label(text=f('پنل مدیریت'), size_hint_y=0.07, font_size='20sp')
+            main_layout.add_widget(header)
+            
+            tabs_layout = BoxLayout(size_hint_y=0.08, spacing=2)
+            
+            btn_agents = Button(text=f('عامل‌ها'), background_color=(0.3, 0.5, 0.8, 1))
+            btn_agents.bind(on_press=lambda x: self.switch_tab(0))
+            tabs_layout.add_widget(btn_agents)
+            
+            btn_routes = Button(text=f('مسیرها'), background_color=(0.3, 0.5, 0.8, 0.6))
+            btn_routes.bind(on_press=lambda x: self.switch_tab(1))
+            tabs_layout.add_widget(btn_routes)
+            
+            btn_customers = Button(text=f('مشتریان'), background_color=(0.3, 0.5, 0.8, 0.6))
+            btn_customers.bind(on_press=lambda x: self.switch_tab(2))
+            tabs_layout.add_widget(btn_customers)
+            
+            btn_settings = Button(text=f('⚙️ تنظیمات'), background_color=(0.3, 0.5, 0.8, 0.6))
+            btn_settings.bind(on_press=lambda x: self.switch_tab(3))
+            tabs_layout.add_widget(btn_settings)
+            
+            main_layout.add_widget(tabs_layout)
+            
+            self.content_area = BoxLayout(orientation='vertical')
+            main_layout.add_widget(self.content_area)
+            
+            logout_btn = Button(text=f('خروج'), size_hint_y=0.07, background_color=(0.8, 0.2, 0.2, 1))
+            logout_btn.bind(on_press=self.logout)
+            main_layout.add_widget(logout_btn)
+            
+            self.add_widget(main_layout)
+            self.switch_tab(0)
+            logger.info("UI صفحه AdminScreen ساخته شد")
+        except Exception as e:
+            logger.error("خطا در ساخت UI AdminScreen", e)
+            raise
     
     def switch_tab(self, tab_id):
-        self.current_tab = tab_id
-        self.content_area.clear_widgets()
-        
-        if tab_id == 0:
-            self.show_agents_tab()
-        elif tab_id == 1:
-            self.show_routes_tab()
-        elif tab_id == 2:
-            self.show_customers_tab()
-        elif tab_id == 3:
-            self.show_settings_tab()
+        try:
+            self.current_tab = tab_id
+            self.content_area.clear_widgets()
+            
+            if tab_id == 0:
+                self.show_agents_tab()
+            elif tab_id == 1:
+                self.show_routes_tab()
+            elif tab_id == 2:
+                self.show_customers_tab()
+            elif tab_id == 3:
+                self.show_settings_tab()
+        except Exception as e:
+            logger.error(f"خطا در تغییر تب {tab_id}", e)
+            self.show_message('خطا', f'خطا در بارگذاری تب: {str(e)}')
     
     def show_agents_tab(self):
-        layout = ScrollView()
-        content = GridLayout(cols=1, spacing=10, size_hint_y=None, padding=10)
-        content.bind(minimum_height=content.setter('height'))
-        
-        content.add_widget(Label(text=f('➕ افزودن عامل جدید'), size_hint_y=None, height=40, font_size='16sp', bold=True))
-        
-        name_input = RTLTextInput(hint_text='نام کامل', multiline=False, size_hint_y=None, height=45)
-        content.add_widget(name_input)
-        
-        phone_input = RTLTextInput(hint_text='شماره تلفن', multiline=False, size_hint_y=None, height=45)
-        content.add_widget(phone_input)
-        
-        role_spinner = RTLSpinner(text=ROLES[0], values=ROLES, size_hint_y=None, height=45)
-        content.add_widget(role_spinner)
-        
-        email_input = RTLTextInput(hint_text='ایمیل', multiline=False, size_hint_y=None, height=45)
-        content.add_widget(email_input)
-        
-        add_btn = Button(text=f('افزودن'), size_hint_y=None, height=45, background_color=(0.2, 0.7, 0.2, 1))
-        content.add_widget(add_btn)
-        
-        content.add_widget(Label(text=f('📋 لیست عامل‌ها'), size_hint_y=None, height=40, font_size='16sp', bold=True))
-        
-        agents = get_agents()
-        for agent in agents:
-            agent_box = BoxLayout(size_hint_y=None, height=60, spacing=5)
-            agent_info = Label(text=f("{agent.get('name', '')}\n{agent.get('role', '')}"), size_hint_x=0.7)
-            agent_box.add_widget(agent_info)
-            del_btn = Button(text=f('حذف'), size_hint_x=0.3, background_color=(0.8, 0.2, 0.2, 1))
-            del_btn.bind(on_press=lambda x, a=agent: self.delete_agent_and_refresh(a.get('id')))
-            agent_box.add_widget(del_btn)
-            content.add_widget(agent_box)
-        
-        add_btn.bind(on_press=lambda x: self.add_agent_and_refresh(name_input, phone_input, role_spinner, email_input))
-        
-        layout.add_widget(content)
-        self.content_area.add_widget(layout)
+        try:
+            layout = ScrollView()
+            content = GridLayout(cols=1, spacing=10, size_hint_y=None, padding=10)
+            content.bind(minimum_height=content.setter('height'))
+            
+            content.add_widget(Label(text=f('➕ افزودن عامل جدید'), size_hint_y=None, height=40, font_size='16sp', bold=True))
+            
+            name_input = RTLTextInput(hint_text='نام کامل', multiline=False, size_hint_y=None, height=45)
+            content.add_widget(name_input)
+            
+            phone_input = RTLTextInput(hint_text='شماره تلفن', multiline=False, size_hint_y=None, height=45)
+            content.add_widget(phone_input)
+            
+            role_spinner = RTLSpinner(text=ROLES[0], values=ROLES, size_hint_y=None, height=45)
+            content.add_widget(role_spinner)
+            
+            email_input = RTLTextInput(hint_text='ایمیل', multiline=False, size_hint_y=None, height=45)
+            content.add_widget(email_input)
+            
+            add_btn = Button(text=f('افزودن'), size_hint_y=None, height=45, background_color=(0.2, 0.7, 0.2, 1))
+            content.add_widget(add_btn)
+            
+            content.add_widget(Label(text=f('📋 لیست عامل‌ها'), size_hint_y=None, height=40, font_size='16sp', bold=True))
+            
+            agents = get_agents()
+            for agent in agents:
+                agent_box = BoxLayout(size_hint_y=None, height=60, spacing=5)
+                agent_info = Label(text=f("{agent.get('name', '')}\n{agent.get('role', '')}"), size_hint_x=0.7)
+                agent_box.add_widget(agent_info)
+                del_btn = Button(text=f('حذف'), size_hint_x=0.3, background_color=(0.8, 0.2, 0.2, 1))
+                del_btn.bind(on_press=lambda x, a=agent: self.delete_agent_and_refresh(a.get('id')))
+                agent_box.add_widget(del_btn)
+                content.add_widget(agent_box)
+            
+            add_btn.bind(on_press=lambda x: self.add_agent_and_refresh(name_input, phone_input, role_spinner, email_input))
+            
+            layout.add_widget(content)
+            self.content_area.add_widget(layout)
+        except Exception as e:
+            logger.error("خطا در نمایش تب عامل‌ها", e)
+            self.show_message('خطا', f'خطا در بارگذاری عامل‌ها: {str(e)}')
     
     def add_agent_and_refresh(self, name_input, phone_input, role_spinner, email_input):
-        if name_input.text:
-            agent = {
-                'name': name_input.text,
-                'phone': phone_input.text,
-                'role': role_spinner.text,
-                'email': email_input.text,
-                'hire_date': get_today_jalali()
-            }
-            add_agent(agent)
-            name_input.text = ''
-            phone_input.text = ''
-            email_input.text = ''
-            self.show_message('موفق', 'عامل با موفقیت اضافه شد')
-            self.switch_tab(0)
+        try:
+            if name_input.text:
+                agent = {
+                    'name': name_input.text,
+                    'phone': phone_input.text,
+                    'role': role_spinner.text,
+                    'email': email_input.text,
+                    'hire_date': get_today_jalali()
+                }
+                add_agent(agent)
+                name_input.text = ''
+                phone_input.text = ''
+                email_input.text = ''
+                self.show_message('موفق', 'عامل با موفقیت اضافه شد')
+                self.switch_tab(0)
+                logger.info(f"عامل جدید اضافه شد: {agent['name']}")
+        except Exception as e:
+            logger.error("خطا در افزودن عامل", e)
+            self.show_message('خطا', f'خطا در افزودن عامل: {str(e)}')
     
     def delete_agent_and_refresh(self, agent_id):
-        delete_agent(agent_id)
-        self.show_message('موفق', 'عامل با موفقیت حذف شد')
-        self.switch_tab(0)
+        try:
+            delete_agent(agent_id)
+            self.show_message('موفق', 'عامل با موفقیت حذف شد')
+            self.switch_tab(0)
+            logger.info(f"عامل {agent_id} حذف شد")
+        except Exception as e:
+            logger.error(f"خطا در حذف عامل {agent_id}", e)
+            self.show_message('خطا', f'خطا در حذف عامل: {str(e)}')
     
     def show_routes_tab(self):
-        layout = BoxLayout(orientation='vertical')
-        
-        tabs = BoxLayout(size_hint_y=0.08, spacing=2)
-        btn_manual = Button(text=f('مدیریت دستی'), background_color=(0.3, 0.5, 0.8, 1))
-        btn_excel = Button(text=f('ورود از اکسل'), background_color=(0.3, 0.5, 0.8, 0.6))
-        
-        btn_manual.bind(on_press=lambda x: self.show_manual_routes())
-        btn_excel.bind(on_press=lambda x: self.show_excel_routes())
-        
-        tabs.add_widget(btn_manual)
-        tabs.add_widget(btn_excel)
-        layout.add_widget(tabs)
-        
-        self.routes_content = BoxLayout(orientation='vertical')
-        layout.add_widget(self.routes_content)
-        
-        self.show_manual_routes()
-        self.content_area.add_widget(layout)
+        try:
+            layout = BoxLayout(orientation='vertical')
+            
+            tabs = BoxLayout(size_hint_y=0.08, spacing=2)
+            btn_manual = Button(text=f('مدیریت دستی'), background_color=(0.3, 0.5, 0.8, 1))
+            btn_excel = Button(text=f('ورود از اکسل'), background_color=(0.3, 0.5, 0.8, 0.6))
+            
+            btn_manual.bind(on_press=lambda x: self.show_manual_routes())
+            btn_excel.bind(on_press=lambda x: self.show_excel_routes())
+            
+            tabs.add_widget(btn_manual)
+            tabs.add_widget(btn_excel)
+            layout.add_widget(tabs)
+            
+            self.routes_content = BoxLayout(orientation='vertical')
+            layout.add_widget(self.routes_content)
+            
+            self.show_manual_routes()
+            self.content_area.add_widget(layout)
+        except Exception as e:
+            logger.error("خطا در نمایش تب مسیرها", e)
+            self.show_message('خطا', f'خطا در بارگذاری مسیرها: {str(e)}')
     
     def show_manual_routes(self):
-        self.routes_content.clear_widgets()
-        
-        content = GridLayout(cols=1, spacing=10, size_hint_y=None, padding=10)
-        content.bind(minimum_height=content.setter('height'))
-        
-        content.add_widget(Label(text=f('➕ افزودن مسیر جدید'), size_hint_y=None, height=40, font_size='16sp', bold=True))
-        
-        self.route_name_input = RTLTextInput(hint_text='نام مسیر', multiline=False, size_hint_y=None, height=45)
-        content.add_widget(self.route_name_input)
-        
-        add_btn = Button(text=f('افزودن'), size_hint_y=None, height=45, background_color=(0.2, 0.7, 0.2, 1))
-        add_btn.bind(on_press=self.add_route_manual)
-        content.add_widget(add_btn)
-        
-        content.add_widget(Label(text=f('🗺️ لیست مسیرها'), size_hint_y=None, height=40, font_size='16sp', bold=True))
-        
-        self.routes_list = GridLayout(cols=1, spacing=5, size_hint_y=None)
-        self.routes_list.bind(minimum_height=self.routes_list.setter('height'))
-        content.add_widget(self.routes_list)
-        
-        scroll = ScrollView()
-        scroll.add_widget(content)
-        self.routes_content.add_widget(scroll)
-        
-        self.refresh_routes_list()
+        try:
+            self.routes_content.clear_widgets()
+            
+            content = GridLayout(cols=1, spacing=10, size_hint_y=None, padding=10)
+            content.bind(minimum_height=content.setter('height'))
+            
+            content.add_widget(Label(text=f('➕ افزودن مسیر جدید'), size_hint_y=None, height=40, font_size='16sp', bold=True))
+            
+            self.route_name_input = RTLTextInput(hint_text='نام مسیر', multiline=False, size_hint_y=None, height=45)
+            content.add_widget(self.route_name_input)
+            
+            add_btn = Button(text=f('افزودن'), size_hint_y=None, height=45, background_color=(0.2, 0.7, 0.2, 1))
+            add_btn.bind(on_press=self.add_route_manual)
+            content.add_widget(add_btn)
+            
+            content.add_widget(Label(text=f('🗺️ لیست مسیرها'), size_hint_y=None, height=40, font_size='16sp', bold=True))
+            
+            self.routes_list = GridLayout(cols=1, spacing=5, size_hint_y=None)
+            self.routes_list.bind(minimum_height=self.routes_list.setter('height'))
+            content.add_widget(self.routes_list)
+            
+            scroll = ScrollView()
+            scroll.add_widget(content)
+            self.routes_content.add_widget(scroll)
+            
+            self.refresh_routes_list()
+        except Exception as e:
+            logger.error("خطا در نمایش مسیرهای دستی", e)
+            raise
     
     def refresh_routes_list(self):
-        self.routes_list.clear_widgets()
-        routes = get_routes()
-        for route in routes:
-            box = BoxLayout(size_hint_y=None, height=50, spacing=5)
-            box.add_widget(Label(text=f(route.get('name', '')), size_hint_x=0.7))
-            del_btn = Button(text=f('حذف'), size_hint_x=0.3, background_color=(0.8, 0.2, 0.2, 1))
-            del_btn.bind(on_press=lambda x, r=route: self.delete_route_and_refresh(r.get('id')))
-            box.add_widget(del_btn)
-            self.routes_list.add_widget(box)
+        try:
+            self.routes_list.clear_widgets()
+            routes = get_routes()
+            for route in routes:
+                box = BoxLayout(size_hint_y=None, height=50, spacing=5)
+                box.add_widget(Label(text=f(route.get('name', '')), size_hint_x=0.7))
+                del_btn = Button(text=f('حذف'), size_hint_x=0.3, background_color=(0.8, 0.2, 0.2, 1))
+                del_btn.bind(on_press=lambda x, r=route: self.delete_route_and_refresh(r.get('id')))
+                box.add_widget(del_btn)
+                self.routes_list.add_widget(box)
+        except Exception as e:
+            logger.error("خطا در به‌روزرسانی لیست مسیرها", e)
     
     def add_route_manual(self, instance):
-        if self.route_name_input.text:
-            add_route({'name': self.route_name_input.text})
-            self.route_name_input.text = ''
-            self.refresh_routes_list()
-            self.show_message('موفق', 'مسیر با موفقیت اضافه شد')
+        try:
+            if self.route_name_input.text:
+                add_route({'name': self.route_name_input.text})
+                self.route_name_input.text = ''
+                self.refresh_routes_list()
+                self.show_message('موفق', 'مسیر با موفقیت اضافه شد')
+                logger.info(f"مسیر جدید اضافه شد: {self.route_name_input.text}")
+        except Exception as e:
+            logger.error("خطا در افزودن مسیر", e)
+            self.show_message('خطا', f'خطا در افزودن مسیر: {str(e)}')
     
     def delete_route_and_refresh(self, route_id):
-        delete_route(route_id)
-        self.refresh_routes_list()
-        self.show_message('موفق', 'مسیر با موفقیت حذف شد')
+        try:
+            delete_route(route_id)
+            self.refresh_routes_list()
+            self.show_message('موفق', 'مسیر با موفقیت حذف شد')
+            logger.info(f"مسیر {route_id} حذف شد")
+        except Exception as e:
+            logger.error(f"خطا در حذف مسیر {route_id}", e)
+            self.show_message('خطا', f'خطا در حذف مسیر: {str(e)}')
     
     def show_excel_routes(self):
-        self.routes_content.clear_widgets()
-        
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
-        
-        layout.add_widget(Label(text=f('📎 ورود مسیرها از فایل Excel'), font_size='18sp', bold=True, size_hint_y=0.08))
-        
-        info = Label(text=f('فرمت فایل اکسل: ستون اول نام مسیر'), size_hint_y=None, height=40)
-        layout.add_widget(info)
-        
-        self.routes_file_picker = FilePicker(size_hint_y=None, height=100)
-        layout.add_widget(self.routes_file_picker)
-        
-        import_btn = Button(text=f('ورود به سیستم'), size_hint_y=0.1, background_color=(0.2, 0.7, 0.2, 1))
-        import_btn.bind(on_press=self.import_routes_from_excel)
-        layout.add_widget(import_btn)
-        
-        self.routes_content.add_widget(layout)
+        try:
+            self.routes_content.clear_widgets()
+            
+            layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
+            
+            layout.add_widget(Label(text=f('📎 ورود مسیرها از فایل Excel'), font_size='18sp', bold=True, size_hint_y=0.08))
+            
+            info = Label(text=f('فرمت فایل اکسل: ستون اول نام مسیر'), size_hint_y=None, height=40)
+            layout.add_widget(info)
+            
+            self.routes_file_picker = FilePicker(size_hint_y=None, height=100)
+            layout.add_widget(self.routes_file_picker)
+            
+            import_btn = Button(text=f('ورود به سیستم'), size_hint_y=0.1, background_color=(0.2, 0.7, 0.2, 1))
+            import_btn.bind(on_press=self.import_routes_from_excel)
+            layout.add_widget(import_btn)
+            
+            self.routes_content.add_widget(layout)
+        except Exception as e:
+            logger.error("خطا در نمایش ورود اکسل مسیرها", e)
+            self.show_message('خطا', f'خطا در بارگذاری: {str(e)}')
     
     def import_routes_from_excel(self, instance):
-        filepath = self.routes_file_picker.get_file()
-        if not filepath:
-            self.show_message('خطا', 'لطفاً ابتدا فایل را انتخاب کنید')
-            return
-        
-        success, message = import_routes_from_excel(filepath)
-        self.show_message('موفق' if success else 'خطا', message)
-        
-        if success:
-            self.show_manual_routes()
+        try:
+            filepath = self.routes_file_picker.get_file()
+            if not filepath:
+                self.show_message('خطا', 'لطفاً ابتدا فایل را انتخاب کنید')
+                return
+            
+            success, message = import_routes_from_excel(filepath)
+            self.show_message('موفق' if success else 'خطا', message)
+            
+            if success:
+                logger.info(f"مسیرها از فایل {filepath} وارد شدند")
+                self.show_manual_routes()
+        except Exception as e:
+            logger.error("خطا در ورود مسیرها از اکسل", e)
+            self.show_message('خطا', f'خطا در ورود مسیرها: {str(e)}')
     
     def show_customers_tab(self):
-        layout = BoxLayout(orientation='vertical')
-        
-        tabs = BoxLayout(size_hint_y=0.08, spacing=2)
-        btn_manual = Button(text=f('مدیریت دستی'), background_color=(0.3, 0.5, 0.8, 1))
-        btn_excel = Button(text=f('ورود از اکسل'), background_color=(0.3, 0.5, 0.8, 0.6))
-        
-        btn_manual.bind(on_press=lambda x: self.show_manual_customers())
-        btn_excel.bind(on_press=lambda x: self.show_excel_customers())
-        
-        tabs.add_widget(btn_manual)
-        tabs.add_widget(btn_excel)
-        layout.add_widget(tabs)
-        
-        self.customers_content = BoxLayout(orientation='vertical')
-        layout.add_widget(self.customers_content)
-        
-        self.show_manual_customers()
-        self.content_area.add_widget(layout)
+        try:
+            layout = BoxLayout(orientation='vertical')
+            
+            tabs = BoxLayout(size_hint_y=0.08, spacing=2)
+            btn_manual = Button(text=f('مدیریت دستی'), background_color=(0.3, 0.5, 0.8, 1))
+            btn_excel = Button(text=f('ورود از اکسل'), background_color=(0.3, 0.5, 0.8, 0.6))
+            
+            btn_manual.bind(on_press=lambda x: self.show_manual_customers())
+            btn_excel.bind(on_press=lambda x: self.show_excel_customers())
+            
+            tabs.add_widget(btn_manual)
+            tabs.add_widget(btn_excel)
+            layout.add_widget(tabs)
+            
+            self.customers_content = BoxLayout(orientation='vertical')
+            layout.add_widget(self.customers_content)
+            
+            self.show_manual_customers()
+            self.content_area.add_widget(layout)
+        except Exception as e:
+            logger.error("خطا در نمایش تب مشتریان", e)
+            self.show_message('خطا', f'خطا در بارگذاری مشتریان: {str(e)}')
     
     def show_manual_customers(self):
-        self.customers_content.clear_widgets()
-        
-        content = GridLayout(cols=1, spacing=10, size_hint_y=None, padding=10)
-        content.bind(minimum_height=content.setter('height'))
-        
-        content.add_widget(Label(text=f('➕ افزودن مشتری جدید'), size_hint_y=None, height=40, font_size='16sp', bold=True))
-        
-        content.add_widget(Label(text=f('انتخاب مسیر:'), size_hint_y=None, height=30))
-        routes = get_routes()
-        route_names = [r.get('name', '') for r in routes] if routes else ['']
-        self.customer_route_spinner = RTLSpinner(text=route_names[0] if route_names else '', values=route_names, size_hint_y=None, height=45)
-        content.add_widget(self.customer_route_spinner)
-        
-        self.customer_name_input = RTLTextInput(hint_text='نام مشتری', multiline=False, size_hint_y=None, height=45)
-        content.add_widget(self.customer_name_input)
-        
-        self.customer_store_input = RTLTextInput(hint_text='نام فروشگاه', multiline=False, size_hint_y=None, height=45)
-        content.add_widget(self.customer_store_input)
-        
-        self.customer_mobile_input = RTLTextInput(hint_text='موبایل', multiline=False, size_hint_y=None, height=45)
-        content.add_widget(self.customer_mobile_input)
-        
-        self.customer_address_input = RTLTextInput(hint_text='آدرس', multiline=False, size_hint_y=None, height=45)
-        content.add_widget(self.customer_address_input)
-        
-        add_btn = Button(text=f('افزودن مشتری'), size_hint_y=None, height=45, background_color=(0.2, 0.7, 0.2, 1))
-        add_btn.bind(on_press=self.add_customer_manual)
-        content.add_widget(add_btn)
-        
-        content.add_widget(Label(text=f('📞 لیست مشتریان'), size_hint_y=None, height=40, font_size='16sp', bold=True))
-        
-        self.customers_list = GridLayout(cols=1, spacing=5, size_hint_y=None)
-        self.customers_list.bind(minimum_height=self.customers_list.setter('height'))
-        content.add_widget(self.customers_list)
-        
-        filter_btn = Button(text=f('نمایش مشتریان این مسیر'), size_hint_y=None, height=40, background_color=(0.4, 0.5, 0.6, 1))
-        filter_btn.bind(on_press=self.refresh_customers_list)
-        content.add_widget(filter_btn)
-        
-        scroll = ScrollView()
-        scroll.add_widget(content)
-        self.customers_content.add_widget(scroll)
-        
-        self.refresh_customers_list()
+        try:
+            self.customers_content.clear_widgets()
+            
+            content = GridLayout(cols=1, spacing=10, size_hint_y=None, padding=10)
+            content.bind(minimum_height=content.setter('height'))
+            
+            content.add_widget(Label(text=f('➕ افزودن مشتری جدید'), size_hint_y=None, height=40, font_size='16sp', bold=True))
+            
+            content.add_widget(Label(text=f('انتخاب مسیر:'), size_hint_y=None, height=30))
+            routes = get_routes()
+            route_names = [r.get('name', '') for r in routes] if routes else ['']
+            self.customer_route_spinner = RTLSpinner(text=route_names[0] if route_names else '', values=route_names, size_hint_y=None, height=45)
+            content.add_widget(self.customer_route_spinner)
+            
+            self.customer_name_input = RTLTextInput(hint_text='نام مشتری', multiline=False, size_hint_y=None, height=45)
+            content.add_widget(self.customer_name_input)
+            
+            self.customer_store_input = RTLTextInput(hint_text='نام فروشگاه', multiline=False, size_hint_y=None, height=45)
+            content.add_widget(self.customer_store_input)
+            
+            self.customer_mobile_input = RTLTextInput(hint_text='موبایل', multiline=False, size_hint_y=None, height=45)
+            content.add_widget(self.customer_mobile_input)
+            
+            self.customer_address_input = RTLTextInput(hint_text='آدرس', multiline=False, size_hint_y=None, height=45)
+            content.add_widget(self.customer_address_input)
+            
+            add_btn = Button(text=f('افزودن مشتری'), size_hint_y=None, height=45, background_color=(0.2, 0.7, 0.2, 1))
+            add_btn.bind(on_press=self.add_customer_manual)
+            content.add_widget(add_btn)
+            
+            content.add_widget(Label(text=f('📞 لیست مشتریان'), size_hint_y=None, height=40, font_size='16sp', bold=True))
+            
+            self.customers_list = GridLayout(cols=1, spacing=5, size_hint_y=None)
+            self.customers_list.bind(minimum_height=self.customers_list.setter('height'))
+            content.add_widget(self.customers_list)
+            
+            filter_btn = Button(text=f('نمایش مشتریان این مسیر'), size_hint_y=None, height=40, background_color=(0.4, 0.5, 0.6, 1))
+            filter_btn.bind(on_press=self.refresh_customers_list)
+            content.add_widget(filter_btn)
+            
+            scroll = ScrollView()
+            scroll.add_widget(content)
+            self.customers_content.add_widget(scroll)
+            
+            self.refresh_customers_list()
+        except Exception as e:
+            logger.error("خطا در نمایش مشتریان دستی", e)
+            raise
     
     def refresh_customers_list(self, instance=None):
-        self.customers_list.clear_widgets()
-        
-        selected_route = self.customer_route_spinner.text
-        all_customers = get_customers()
-        
-        filtered = [c for c in all_customers if c.get('route_name') == selected_route]
-        
-        if not filtered:
-            self.customers_list.add_widget(Label(text=f('هیچ مشتری در این مسیر وجود ندارد'), size_hint_y=None, height=40))
-            return
-        
-        for customer in filtered:
-            box = BoxLayout(size_hint_y=None, height=60, spacing=5)
-            info = f"{customer.get('name', '')}\n{customer.get('store_name', '')}\n{customer.get('mobile', '')}"
-            box.add_widget(Label(text=f(info), size_hint_x=0.7))
-            del_btn = Button(text=f('حذف'), size_hint_x=0.3, background_color=(0.8, 0.2, 0.2, 1))
-            del_btn.bind(on_press=lambda x, c=customer: self.delete_customer_and_refresh(c.get('id')))
-            box.add_widget(del_btn)
-            self.customers_list.add_widget(box)
+        try:
+            self.customers_list.clear_widgets()
+            
+            selected_route = self.customer_route_spinner.text
+            all_customers = get_customers()
+            
+            filtered = [c for c in all_customers if c.get('route_name') == selected_route]
+            
+            if not filtered:
+                self.customers_list.add_widget(Label(text=f('هیچ مشتری در این مسیر وجود ندارد'), size_hint_y=None, height=40))
+                return
+            
+            for customer in filtered:
+                box = BoxLayout(size_hint_y=None, height=60, spacing=5)
+                info = f"{customer.get('name', '')}\n{customer.get('store_name', '')}\n{customer.get('mobile', '')}"
+                box.add_widget(Label(text=f(info), size_hint_x=0.7))
+                del_btn = Button(text=f('حذف'), size_hint_x=0.3, background_color=(0.8, 0.2, 0.2, 1))
+                del_btn.bind(on_press=lambda x, c=customer: self.delete_customer_and_refresh(c.get('id')))
+                box.add_widget(del_btn)
+                self.customers_list.add_widget(box)
+        except Exception as e:
+            logger.error("خطا در به‌روزرسانی لیست مشتریان", e)
     
     def add_customer_manual(self, instance):
-        route_name = self.customer_route_spinner.text
-        name = self.customer_name_input.text
-        store = self.customer_store_input.text
-        mobile = self.customer_mobile_input.text
-        address = self.customer_address_input.text
-        
-        if not route_name:
-            self.show_message('خطا', 'لطفاً ابتدا مسیر را انتخاب کنید')
-            return
-        
-        if not name:
-            self.show_message('خطا', 'نام مشتری الزامی است')
-            return
-        
-        customer = {
-            'name': name,
-            'store_name': store,
-            'route_name': route_name,
-            'mobile': mobile,
-            'address': address
-        }
-        add_customer(customer)
-        
-        self.customer_name_input.text = ''
-        self.customer_store_input.text = ''
-        self.customer_mobile_input.text = ''
-        self.customer_address_input.text = ''
-        
-        self.refresh_customers_list()
-        self.show_message('موفق', 'مشتری با موفقیت اضافه شد')
+        try:
+            route_name = self.customer_route_spinner.text
+            name = self.customer_name_input.text
+            store = self.customer_store_input.text
+            mobile = self.customer_mobile_input.text
+            address = self.customer_address_input.text
+            
+            if not route_name:
+                self.show_message('خطا', 'لطفاً ابتدا مسیر را انتخاب کنید')
+                return
+            
+            if not name:
+                self.show_message('خطا', 'نام مشتری الزامی است')
+                return
+            
+            customer = {
+                'name': name,
+                'store_name': store,
+                'route_name': route_name,
+                'mobile': mobile,
+                'address': address
+            }
+            add_customer(customer)
+            
+            self.customer_name_input.text = ''
+            self.customer_store_input.text = ''
+            self.customer_mobile_input.text = ''
+            self.customer_address_input.text = ''
+            
+            self.refresh_customers_list()
+            self.show_message('موفق', 'مشتری با موفقیت اضافه شد')
+            logger.info(f"مشتری جدید اضافه شد: {name}")
+        except Exception as e:
+            logger.error("خطا در افزودن مشتری", e)
+            self.show_message('خطا', f'خطا در افزودن مشتری: {str(e)}')
     
     def delete_customer_and_refresh(self, customer_id):
-        delete_customer(customer_id)
-        self.refresh_customers_list()
-        self.show_message('موفق', 'مشتری با موفقیت حذف شد')
+        try:
+            delete_customer(customer_id)
+            self.refresh_customers_list()
+            self.show_message('موفق', 'مشتری با موفقیت حذف شد')
+            logger.info(f"مشتری {customer_id} حذف شد")
+        except Exception as e:
+            logger.error(f"خطا در حذف مشتری {customer_id}", e)
+            self.show_message('خطا', f'خطا در حذف مشتری: {str(e)}')
     
     def show_excel_customers(self):
-        self.customers_content.clear_widgets()
-        
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
-        
-        layout.add_widget(Label(text=f('📎 ورود مشتریان از فایل Excel'), font_size='18sp', bold=True, size_hint_y=0.08))
-        
-        info = Label(text=f('فرمت فایل اکسل: name, store_name, route_name, mobile, address'), size_hint_y=None, height=40)
-        layout.add_widget(info)
-        
-        self.customers_file_picker = FilePicker(size_hint_y=None, height=100)
-        layout.add_widget(self.customers_file_picker)
-        
-        import_btn = Button(text=f('ورود به سیستم'), size_hint_y=0.1, background_color=(0.2, 0.7, 0.2, 1))
-        import_btn.bind(on_press=self.import_customers_from_excel)
-        layout.add_widget(import_btn)
-        
-        self.customers_content.add_widget(layout)
+        try:
+            self.customers_content.clear_widgets()
+            
+            layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
+            
+            layout.add_widget(Label(text=f('📎 ورود مشتریان از فایل Excel'), font_size='18sp', bold=True, size_hint_y=0.08))
+            
+            info = Label(text=f('فرمت فایل اکسل: name, store_name, route_name, mobile, address'), size_hint_y=None, height=40)
+            layout.add_widget(info)
+            
+            self.customers_file_picker = FilePicker(size_hint_y=None, height=100)
+            layout.add_widget(self.customers_file_picker)
+            
+            import_btn = Button(text=f('ورود به سیستم'), size_hint_y=0.1, background_color=(0.2, 0.7, 0.2, 1))
+            import_btn.bind(on_press=self.import_customers_from_excel)
+            layout.add_widget(import_btn)
+            
+            self.customers_content.add_widget(layout)
+        except Exception as e:
+            logger.error("خطا در نمایش ورود اکسل مشتریان", e)
+            self.show_message('خطا', f'خطا در بارگذاری: {str(e)}')
     
     def import_customers_from_excel(self, instance):
-        filepath = self.customers_file_picker.get_file()
-        if not filepath:
-            self.show_message('خطا', 'لطفاً ابتدا فایل را انتخاب کنید')
-            return
-        
-        success, message = import_customers_from_excel(filepath)
-        self.show_message('موفق' if success else 'خطا', message)
-        
-        if success:
-            self.show_manual_customers()
+        try:
+            filepath = self.customers_file_picker.get_file()
+            if not filepath:
+                self.show_message('خطا', 'لطفاً ابتدا فایل را انتخاب کنید')
+                return
+            
+            success, message = import_customers_from_excel(filepath)
+            self.show_message('موفق' if success else 'خطا', message)
+            
+            if success:
+                logger.info(f"مشتریان از فایل {filepath} وارد شدند")
+                self.show_manual_customers()
+        except Exception as e:
+            logger.error("خطا در ورود مشتریان از اکسل", e)
+            self.show_message('خطا', f'خطا در ورود مشتریان: {str(e)}')
     
     def show_settings_tab(self):
-        settings = get_settings()
-        routes = get_routes()
-        customers = get_customers()
-        
-        route_names = [r.get('name', '') for r in routes] if routes else ['']
-        customer_names = [c.get('name', '') for c in customers] if customers else ['']
-        
-        layout = ScrollView()
-        content = GridLayout(cols=2, spacing=10, size_hint_y=None, padding=10)
-        content.bind(minimum_height=content.setter('height'))
-        
-        fields = [
-            ('supervision_rate', f('درصد سرکشی به مشتری'), '0.3', 'float'),
-            ('conversion_rate', f('نرخ تبدیل سرکشی به فاکتور'), '0.25', 'float'),
-            ('avg_invoice_amount', f('میانگین مبلغ فاکتور استاندارد'), '1000000', 'int'),
-            ('target_amount', f('مبلغ تارگت ریالی'), '50000000', 'int'),
-            ('target_count', f('میزان تارگت تعدادی'), '100', 'int'),
-            ('target_invoice_count', f('میزان تارگت تعداد فاکتور'), '20', 'int'),
-            ('target_customer_count', f('میزان تارگت تعداد مشتری'), '50', 'int'),
-            ('target_new_customer_count', f('میزان تارگت مشتری جدید'), '10', 'int'),
-            ('target_cash_sales', f('تارگت فروش و وصول نقدی'), '30000000', 'int'),
-            ('target_credit_sales', f('تارگت فروش و وصول غیر نقدی'), '20000000', 'int'),
-            ('first_customer_of_route', f('اولین مشتری مسیر روز'), settings.get('first_customer_of_route', ''), 'spinner_customer', customer_names),
-            ('work_start_time', f('ساعت شروع به کار'), '08:00', 'time'),
-            ('first_visit_time', f('ساعت اولین ویزیت'), '09:00', 'time'),
-            ('min_daily_hours', f('حداقل ساعت کاری روزانه'), '6', 'int'),
-        ]
-        
-        inputs = {}
-        for item in fields:
-            key = item[0]
-            label = item[1]
-            default = item[2]
-            field_type = item[3]
+        try:
+            settings = get_settings()
+            routes = get_routes()
+            customers = get_customers()
             
-            content.add_widget(Label(text=label + ':', size_hint_y=None, height=45))
+            route_names = [r.get('name', '') for r in routes] if routes else ['']
+            customer_names = [c.get('name', '') for c in customers] if customers else ['']
             
-            if field_type == 'float':
-                value = settings.get(key, default)
-                input_field = RTLTextInput(text=str(value), multiline=False, size_hint_y=None, height=45, input_filter='float')
-            elif field_type == 'int':
-                value = settings.get(key, default)
-                input_field = RTLTextInput(text=str(value), multiline=False, size_hint_y=None, height=45, input_filter='int')
-            elif field_type == 'time':
-                value = settings.get(key, default)
-                input_field = RTLTextInput(text=value, multiline=False, size_hint_y=None, height=45, hint_text='HH:MM')
-            elif field_type == 'spinner_customer':
-                values = item[4] if len(item) > 4 else ['']
-                value = settings.get(key, default)
-                input_field = RTLSpinner(text=value if value else (values[0] if values else ''), 
-                                        values=values, size_hint_y=None, height=45)
-            else:
-                value = settings.get(key, default)
-                input_field = RTLTextInput(text=str(value), multiline=False, size_hint_y=None, height=45)
+            layout = ScrollView()
+            content = GridLayout(cols=2, spacing=10, size_hint_y=None, padding=10)
+            content.bind(minimum_height=content.setter('height'))
             
-            content.add_widget(input_field)
-            inputs[key] = input_field
-        
-        content.add_widget(Label(size_hint_y=None, height=10))
-        
-        save_btn = Button(text=f('ذخیره تنظیمات'), size_hint_y=None, height=50, background_color=(0.2, 0.6, 1, 1), size_hint_x=0.5)
-        save_btn.bind(on_press=lambda x: self.save_settings(inputs))
-        content.add_widget(save_btn)
-        
-        layout.add_widget(content)
-        self.content_area.add_widget(layout)
+            fields = [
+                ('supervision_rate', f('درصد سرکشی به مشتری'), '0.3', 'float'),
+                ('conversion_rate', f('نرخ تبدیل سرکشی به فاکتور'), '0.25', 'float'),
+                ('avg_invoice_amount', f('میانگین مبلغ فاکتور استاندارد'), '1000000', 'int'),
+                ('target_amount', f('مبلغ تارگت ریالی'), '50000000', 'int'),
+                ('target_count', f('میزان تارگت تعدادی'), '100', 'int'),
+                ('target_invoice_count', f('میزان تارگت تعداد فاکتور'), '20', 'int'),
+                ('target_customer_count', f('میزان تارگت تعداد مشتری'), '50', 'int'),
+                ('target_new_customer_count', f('میزان تارگت مشتری جدید'), '10', 'int'),
+                ('target_cash_sales', f('تارگت فروش و وصول نقدی'), '30000000', 'int'),
+                ('target_credit_sales', f('تارگت فروش و وصول غیر نقدی'), '20000000', 'int'),
+                ('first_customer_of_route', f('اولین مشتری مسیر روز'), settings.get('first_customer_of_route', ''), 'spinner_customer', customer_names),
+                ('work_start_time', f('ساعت شروع به کار'), '08:00', 'time'),
+                ('first_visit_time', f('ساعت اولین ویزیت'), '09:00', 'time'),
+                ('min_daily_hours', f('حداقل ساعت کاری روزانه'), '6', 'int'),
+            ]
+            
+            inputs = {}
+            for item in fields:
+                key = item[0]
+                label = item[1]
+                default = item[2]
+                field_type = item[3]
+                
+                content.add_widget(Label(text=label + ':', size_hint_y=None, height=45))
+                
+                if field_type == 'float':
+                    value = settings.get(key, default)
+                    input_field = RTLTextInput(text=str(value), multiline=False, size_hint_y=None, height=45, input_filter='float')
+                elif field_type == 'int':
+                    value = settings.get(key, default)
+                    input_field = RTLTextInput(text=str(value), multiline=False, size_hint_y=None, height=45, input_filter='int')
+                elif field_type == 'time':
+                    value = settings.get(key, default)
+                    input_field = RTLTextInput(text=value, multiline=False, size_hint_y=None, height=45, hint_text='HH:MM')
+                elif field_type == 'spinner_customer':
+                    values = item[4] if len(item) > 4 else ['']
+                    value = settings.get(key, default)
+                    input_field = RTLSpinner(text=value if value else (values[0] if values else ''), 
+                                            values=values, size_hint_y=None, height=45)
+                else:
+                    value = settings.get(key, default)
+                    input_field = RTLTextInput(text=str(value), multiline=False, size_hint_y=None, height=45)
+                
+                content.add_widget(input_field)
+                inputs[key] = input_field
+            
+            content.add_widget(Label(size_hint_y=None, height=10))
+            
+            save_btn = Button(text=f('ذخیره تنظیمات'), size_hint_y=None, height=50, background_color=(0.2, 0.6, 1, 1), size_hint_x=0.5)
+            save_btn.bind(on_press=lambda x: self.save_settings(inputs))
+            content.add_widget(save_btn)
+            
+            layout.add_widget(content)
+            self.content_area.add_widget(layout)
+        except Exception as e:
+            logger.error("خطا در نمایش تنظیمات", e)
+            self.show_message('خطا', f'خطا در بارگذاری تنظیمات: {str(e)}')
     
     def save_settings(self, inputs):
-        settings = {}
-        for key, input_field in inputs.items():
-            value = input_field.text
+        try:
+            settings = {}
+            for key, input_field in inputs.items():
+                value = input_field.text
+                
+                if key in ['supervision_rate', 'conversion_rate']:
+                    try:
+                        value = float(value)
+                    except:
+                        value = 0.0
+                elif key in ['avg_invoice_amount', 'target_amount', 'target_count', 'target_invoice_count', 
+                            'target_customer_count', 'target_new_customer_count', 'target_cash_sales', 
+                            'target_credit_sales', 'min_daily_hours']:
+                    try:
+                        value = int(value)
+                    except:
+                        value = 0
+                elif key in ['work_start_time', 'first_visit_time', 'first_customer_of_route']:
+                    pass
+                
+                settings[key] = value
             
-            if key in ['supervision_rate', 'conversion_rate']:
-                try:
-                    value = float(value)
-                except:
-                    value = 0.0
-            elif key in ['avg_invoice_amount', 'target_amount', 'target_count', 'target_invoice_count', 
-                        'target_customer_count', 'target_new_customer_count', 'target_cash_sales', 
-                        'target_credit_sales', 'min_daily_hours']:
-                try:
-                    value = int(value)
-                except:
-                    value = 0
-            elif key in ['work_start_time', 'first_visit_time', 'first_customer_of_route']:
-                pass
-            
-            settings[key] = value
-        
-        update_settings(settings)
-        self.show_message('موفق', 'تنظیمات با موفقیت ذخیره شد')
+            update_settings(settings)
+            self.show_message('موفق', 'تنظیمات با موفقیت ذخیره شد')
+            logger.info("تنظیمات ذخیره شد")
+        except Exception as e:
+            logger.error("خطا در ذخیره تنظیمات", e)
+            self.show_message('خطا', f'خطا در ذخیره تنظیمات: {str(e)}')
     
     def show_message(self, title, message):
-        content = BoxLayout(orientation='vertical', padding=20, spacing=10)
-        content.add_widget(Label(text=f(message), size_hint_y=None, height=50))
-        btn = Button(text=f('باشه'), size_hint_y=None, height=40)
-        content.add_widget(btn)
-        popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
-        btn.bind(on_press=popup.dismiss)
-        popup.open()
+        try:
+            content = BoxLayout(orientation='vertical', padding=20, spacing=10)
+            content.add_widget(Label(text=f(message), size_hint_y=None, height=50))
+            btn = Button(text=f('باشه'), size_hint_y=None, height=40)
+            content.add_widget(btn)
+            popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
+            btn.bind(on_press=popup.dismiss)
+            popup.open()
+        except Exception as e:
+            logger.error(f"خطا در نمایش پیام", e)
     
     def logout(self, instance):
+        logger.info("خروج از پنل مدیریت")
         self.manager.current = 'login'
 
 
 class UserScreen(Screen):
     """صفحه ثبت ویزیت روزانه"""
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.settings = get_settings()
-        self.build_ui()
+        try:
+            logger.info("در حال ساخت صفحه UserScreen")
+            super().__init__(**kwargs)
+            self.settings = get_settings()
+            self.build_ui()
+            logger.info("صفحه UserScreen با موفقیت ساخته شد")
+        except Exception as e:
+            logger.error("خطا در ساخت UserScreen", e)
+            raise
     
     def build_ui(self):
-        layout = BoxLayout(orientation='vertical')
-        
-        header = Label(text=f('ثبت ویزیت روزانه'), size_hint_y=0.07, font_size='20sp')
-        layout.add_widget(header)
-        
-        self.form_layout = GridLayout(cols=3, spacing=8, size_hint_y=None, padding=10)
-        self.form_layout.bind(minimum_height=self.form_layout.setter('height'))
-        
-        routes = get_routes()
-        self.route_names = [r.get('name', '') for r in routes] if routes else ['']
-        
-        customers = get_customers()
-        self.all_customer_names = [c.get('name', '') for c in customers] if customers else ['']
-        
-        self.form_layout.add_widget(Label(text=f('آیتم'), size_hint_y=None, height=35, bold=True, color=(0.2, 0.5, 0.8, 1)))
-        self.form_layout.add_widget(Label(text=f('مقدار'), size_hint_y=None, height=35, bold=True, color=(0.2, 0.5, 0.8, 1)))
-        self.form_layout.add_widget(Label(text=f('هدف'), size_hint_y=None, height=35, bold=True, color=(0.2, 0.5, 0.8, 1)))
-        
-        self.inputs = {}
-        
-        self.form_layout.add_widget(Label(text=f('تاریخ ویزیت'), size_hint_y=None, height=40))
-        visit_date = RTLTextInput(text=get_today_jalali(), multiline=False, size_hint_y=None, height=40)
-        self.form_layout.add_widget(visit_date)
-        self.form_layout.add_widget(Label(text='---', size_hint_y=None, height=40, color=(0.5, 0.5, 0.5, 1)))
-        self.inputs['visit_date'] = visit_date
-        
-        self.form_layout.add_widget(Label(text=f('مسیر ویزیت'), size_hint_y=None, height=40))
-        self.route_spinner = RTLSpinner(text=self.route_names[0] if self.route_names else '', values=self.route_names, size_hint_y=None, height=40)
-        self.route_spinner.bind(text=self.on_route_change)
-        self.form_layout.add_widget(self.route_spinner)
-        self.route_customers_target = Label(text='0', size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1))
-        self.form_layout.add_widget(self.route_customers_target)
-        self.inputs['route_name'] = self.route_spinner
-        
-        self.form_layout.add_widget(Label(text=f('ساعت شروع کار'), size_hint_y=None, height=40))
-        clock_in = RTLTextInput(text=get_current_time(), multiline=False, size_hint_y=None, height=40)
-        self.form_layout.add_widget(clock_in)
-        self.form_layout.add_widget(Label(text=f(self.settings.get('work_start_time', '08:00')), size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1)))
-        self.inputs['clock_in'] = clock_in
-        
-        self.form_layout.add_widget(Label(text=f('ساعت اولین ویزیت'), size_hint_y=None, height=40))
-        first_visit_time = RTLTextInput(text='', multiline=False, size_hint_y=None, height=40)
-        self.form_layout.add_widget(first_visit_time)
-        self.form_layout.add_widget(Label(text=f(self.settings.get('first_visit_time', '09:00')), size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1)))
-        self.inputs['first_visit_time'] = first_visit_time
-        
-        self.form_layout.add_widget(Label(text=f('اولین مشتری'), size_hint_y=None, height=40))
-        self.first_customer_spinner = RTLSpinner(text='', values=self.all_customer_names, size_hint_y=None, height=40)
-        self.form_layout.add_widget(self.first_customer_spinner)
-        self.first_customer_target = Label(text=f(self.settings.get('first_customer_of_route', 'تعیین نشده')), size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1))
-        self.form_layout.add_widget(self.first_customer_target)
-        self.inputs['first_customer'] = self.first_customer_spinner
-        
-        self.form_layout.add_widget(Label(text=f('تعداد مشتری ویزیت شده'), size_hint_y=None, height=40))
-        visited_count = RTLTextInput(text='0', multiline=False, size_hint_y=None, height=40, input_filter='int')
-        self.form_layout.add_widget(visited_count)
-        self.visited_customers_target = Label(text='0', size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1))
-        self.form_layout.add_widget(self.visited_customers_target)
-        self.inputs['visited_customers_count'] = visited_count
-        
-        self.form_layout.add_widget(Label(text=f('تعداد فاکتور موفق'), size_hint_y=None, height=40))
-        invoices_count = RTLTextInput(text='0', multiline=False, size_hint_y=None, height=40, input_filter='int')
-        self.form_layout.add_widget(invoices_count)
-        self.form_layout.add_widget(Label(text=f(str(self.settings.get('target_invoice_count', '20'))), size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1)))
-        self.inputs['successful_invoices_count'] = invoices_count
-        
-        self.form_layout.add_widget(Label(text=f('تعداد واحد فروش موفق'), size_hint_y=None, height=40))
-        units_count = RTLTextInput(text='0', multiline=False, size_hint_y=None, height=40, input_filter='int')
-        self.form_layout.add_widget(units_count)
-        self.form_layout.add_widget(Label(text=f(str(self.settings.get('target_count', '100'))), size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1)))
-        self.inputs['successful_units_count'] = units_count
-        
-        self.form_layout.add_widget(Label(text=f('مبلغ فروش موفق'), size_hint_y=None, height=40))
-        sales_amount = RTLTextInput(text='0', multiline=False, size_hint_y=None, height=40, input_filter='int')
-        self.form_layout.add_widget(sales_amount)
-        target_amount = self.settings.get('target_amount', '50000000')
-        self.form_layout.add_widget(Label(text=f("{:,}".format(target_amount)), size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1)))
-        self.inputs['successful_sales_amount'] = sales_amount
-        
-        self.form_layout.add_widget(Label(text=f('ساعت آخرین ویزیت'), size_hint_y=None, height=40))
-        last_visit_time = RTLTextInput(text='', multiline=False, size_hint_y=None, height=40)
-        self.form_layout.add_widget(last_visit_time)
-        self.form_layout.add_widget(Label(text='---', size_hint_y=None, height=40, color=(0.5, 0.5, 0.5, 1)))
-        self.inputs['last_visit_time'] = last_visit_time
-        
-        self.form_layout.add_widget(Label(text=f('ساعت پایان کار'), size_hint_y=None, height=40))
-        clock_out = RTLTextInput(text='', multiline=False, size_hint_y=None, height=40)
-        self.form_layout.add_widget(clock_out)
-        self.form_layout.add_widget(Label(text='---', size_hint_y=None, height=40, color=(0.5, 0.5, 0.5, 1)))
-        self.inputs['clock_out'] = clock_out
-        
-        form_scroll = ScrollView()
-        form_scroll.add_widget(self.form_layout)
-        layout.add_widget(form_scroll)
-        
-        btn_layout = BoxLayout(size_hint_y=0.09, spacing=10, padding=10)
-        
-        save_btn = Button(text=f('💾 ذخیره'), background_color=(0.2, 0.7, 0.2, 1))
-        save_btn.bind(on_press=self.save_log)
-        btn_layout.add_widget(save_btn)
-        
-        report_btn = Button(text=f('📊 گزارش'), background_color=(0.2, 0.6, 1, 1))
-        report_btn.bind(on_press=self.go_to_report)
-        btn_layout.add_widget(report_btn)
-        
-        logout_btn = Button(text=f('🚪 خروج'), background_color=(0.8, 0.2, 0.2, 1))
-        logout_btn.bind(on_press=self.logout)
-        btn_layout.add_widget(logout_btn)
-        
-        layout.add_widget(btn_layout)
-        self.add_widget(layout)
-        
-        self.update_route_info()
+        try:
+            layout = BoxLayout(orientation='vertical')
+            
+            header = Label(text=f('ثبت ویزیت روزانه'), size_hint_y=0.07, font_size='20sp')
+            layout.add_widget(header)
+            
+            self.form_layout = GridLayout(cols=3, spacing=8, size_hint_y=None, padding=10)
+            self.form_layout.bind(minimum_height=self.form_layout.setter('height'))
+            
+            routes = get_routes()
+            self.route_names = [r.get('name', '') for r in routes] if routes else ['']
+            
+            customers = get_customers()
+            self.all_customer_names = [c.get('name', '') for c in customers] if customers else ['']
+            
+            self.form_layout.add_widget(Label(text=f('آیتم'), size_hint_y=None, height=35, bold=True, color=(0.2, 0.5, 0.8, 1)))
+            self.form_layout.add_widget(Label(text=f('مقدار'), size_hint_y=None, height=35, bold=True, color=(0.2, 0.5, 0.8, 1)))
+            self.form_layout.add_widget(Label(text=f('هدف'), size_hint_y=None, height=35, bold=True, color=(0.2, 0.5, 0.8, 1)))
+            
+            self.inputs = {}
+            
+            self.form_layout.add_widget(Label(text=f('تاریخ ویزیت'), size_hint_y=None, height=40))
+            visit_date = RTLTextInput(text=get_today_jalali(), multiline=False, size_hint_y=None, height=40)
+            self.form_layout.add_widget(visit_date)
+            self.form_layout.add_widget(Label(text='---', size_hint_y=None, height=40, color=(0.5, 0.5, 0.5, 1)))
+            self.inputs['visit_date'] = visit_date
+            
+            self.form_layout.add_widget(Label(text=f('مسیر ویزیت'), size_hint_y=None, height=40))
+            self.route_spinner = RTLSpinner(text=self.route_names[0] if self.route_names else '', values=self.route_names, size_hint_y=None, height=40)
+            self.route_spinner.bind(text=self.on_route_change)
+            self.form_layout.add_widget(self.route_spinner)
+            self.route_customers_target = Label(text='0', size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1))
+            self.form_layout.add_widget(self.route_customers_target)
+            self.inputs['route_name'] = self.route_spinner
+            
+            self.form_layout.add_widget(Label(text=f('ساعت شروع کار'), size_hint_y=None, height=40))
+            clock_in = RTLTextInput(text=get_current_time(), multiline=False, size_hint_y=None, height=40)
+            self.form_layout.add_widget(clock_in)
+            self.form_layout.add_widget(Label(text=f(self.settings.get('work_start_time', '08:00')), size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1)))
+            self.inputs['clock_in'] = clock_in
+            
+            self.form_layout.add_widget(Label(text=f('ساعت اولین ویزیت'), size_hint_y=None, height=40))
+            first_visit_time = RTLTextInput(text='', multiline=False, size_hint_y=None, height=40)
+            self.form_layout.add_widget(first_visit_time)
+            self.form_layout.add_widget(Label(text=f(self.settings.get('first_visit_time', '09:00')), size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1)))
+            self.inputs['first_visit_time'] = first_visit_time
+            
+            self.form_layout.add_widget(Label(text=f('اولین مشتری'), size_hint_y=None, height=40))
+            self.first_customer_spinner = RTLSpinner(text='', values=self.all_customer_names, size_hint_y=None, height=40)
+            self.form_layout.add_widget(self.first_customer_spinner)
+            self.first_customer_target = Label(text=f(self.settings.get('first_customer_of_route', 'تعیین نشده')), size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1))
+            self.form_layout.add_widget(self.first_customer_target)
+            self.inputs['first_customer'] = self.first_customer_spinner
+            
+            self.form_layout.add_widget(Label(text=f('تعداد مشتری ویزیت شده'), size_hint_y=None, height=40))
+            visited_count = RTLTextInput(text='0', multiline=False, size_hint_y=None, height=40, input_filter='int')
+            self.form_layout.add_widget(visited_count)
+            self.visited_customers_target = Label(text='0', size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1))
+            self.form_layout.add_widget(self.visited_customers_target)
+            self.inputs['visited_customers_count'] = visited_count
+            
+            self.form_layout.add_widget(Label(text=f('تعداد فاکتور موفق'), size_hint_y=None, height=40))
+            invoices_count = RTLTextInput(text='0', multiline=False, size_hint_y=None, height=40, input_filter='int')
+            self.form_layout.add_widget(invoices_count)
+            self.form_layout.add_widget(Label(text=f(str(self.settings.get('target_invoice_count', '20'))), size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1)))
+            self.inputs['successful_invoices_count'] = invoices_count
+            
+            self.form_layout.add_widget(Label(text=f('تعداد واحد فروش موفق'), size_hint_y=None, height=40))
+            units_count = RTLTextInput(text='0', multiline=False, size_hint_y=None, height=40, input_filter='int')
+            self.form_layout.add_widget(units_count)
+            self.form_layout.add_widget(Label(text=f(str(self.settings.get('target_count', '100'))), size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1)))
+            self.inputs['successful_units_count'] = units_count
+            
+            self.form_layout.add_widget(Label(text=f('مبلغ فروش موفق'), size_hint_y=None, height=40))
+            sales_amount = RTLTextInput(text='0', multiline=False, size_hint_y=None, height=40, input_filter='int')
+            self.form_layout.add_widget(sales_amount)
+            target_amount = self.settings.get('target_amount', '50000000')
+            self.form_layout.add_widget(Label(text=f("{:,}".format(target_amount)), size_hint_y=None, height=40, color=(0.6, 0.4, 0.2, 1)))
+            self.inputs['successful_sales_amount'] = sales_amount
+            
+            self.form_layout.add_widget(Label(text=f('ساعت آخرین ویزیت'), size_hint_y=None, height=40))
+            last_visit_time = RTLTextInput(text='', multiline=False, size_hint_y=None, height=40)
+            self.form_layout.add_widget(last_visit_time)
+            self.form_layout.add_widget(Label(text='---', size_hint_y=None, height=40, color=(0.5, 0.5, 0.5, 1)))
+            self.inputs['last_visit_time'] = last_visit_time
+            
+            self.form_layout.add_widget(Label(text=f('ساعت پایان کار'), size_hint_y=None, height=40))
+            clock_out = RTLTextInput(text='', multiline=False, size_hint_y=None, height=40)
+            self.form_layout.add_widget(clock_out)
+            self.form_layout.add_widget(Label(text='---', size_hint_y=None, height=40, color=(0.5, 0.5, 0.5, 1)))
+            self.inputs['clock_out'] = clock_out
+            
+            form_scroll = ScrollView()
+            form_scroll.add_widget(self.form_layout)
+            layout.add_widget(form_scroll)
+            
+            btn_layout = BoxLayout(size_hint_y=0.09, spacing=10, padding=10)
+            
+            save_btn = Button(text=f('💾 ذخیره'), background_color=(0.2, 0.7, 0.2, 1))
+            save_btn.bind(on_press=self.save_log)
+            btn_layout.add_widget(save_btn)
+            
+            report_btn = Button(text=f('📊 گزارش'), background_color=(0.2, 0.6, 1, 1))
+            report_btn.bind(on_press=self.go_to_report)
+            btn_layout.add_widget(report_btn)
+            
+            logout_btn = Button(text=f('🚪 خروج'), background_color=(0.8, 0.2, 0.2, 1))
+            logout_btn.bind(on_press=self.logout)
+            btn_layout.add_widget(logout_btn)
+            
+            layout.add_widget(btn_layout)
+            self.add_widget(layout)
+            
+            self.update_route_info()
+            logger.info("UI صفحه UserScreen ساخته شد")
+        except Exception as e:
+            logger.error("خطا در ساخت UI UserScreen", e)
+            raise
     
     def update_route_info(self):
-        current_route = self.route_spinner.text
-        
-        if current_route:
-            customers = get_customers()
-            total_customers = len([c for c in customers if c.get('route_name') == current_route])
-            self.route_customers_target.text = str(total_customers)
+        try:
+            current_route = self.route_spinner.text
             
-            supervision_rate = self.settings.get('supervision_rate', 0.3)
-            target_visits = int(total_customers * supervision_rate)
-            self.visited_customers_target.text = str(target_visits)
-            
-            first_customer_target = self.settings.get('first_customer_of_route', 'تعیین نشده')
-            self.first_customer_target.text = f(first_customer_target)
-            
-            filtered_customers = [c.get('name', '') for c in customers if c.get('route_name') == current_route]
-            self.first_customer_spinner.values = filtered_customers if filtered_customers else ['']
-            if filtered_customers:
-                self.first_customer_spinner.text = filtered_customers[0]
-        else:
-            self.route_customers_target.text = '0'
-            self.visited_customers_target.text = '0'
-            self.first_customer_spinner.values = ['']
-            self.first_customer_spinner.text = ''
+            if current_route:
+                customers = get_customers()
+                total_customers = len([c for c in customers if c.get('route_name') == current_route])
+                self.route_customers_target.text = str(total_customers)
+                
+                supervision_rate = self.settings.get('supervision_rate', 0.3)
+                target_visits = int(total_customers * supervision_rate)
+                self.visited_customers_target.text = str(target_visits)
+                
+                first_customer_target = self.settings.get('first_customer_of_route', 'تعیین نشده')
+                self.first_customer_target.text = f(first_customer_target)
+                
+                filtered_customers = [c.get('name', '') for c in customers if c.get('route_name') == current_route]
+                self.first_customer_spinner.values = filtered_customers if filtered_customers else ['']
+                if filtered_customers:
+                    self.first_customer_spinner.text = filtered_customers[0]
+            else:
+                self.route_customers_target.text = '0'
+                self.visited_customers_target.text = '0'
+                self.first_customer_spinner.values = ['']
+                self.first_customer_spinner.text = ''
+        except Exception as e:
+            logger.error("خطا در بروزرسانی اطلاعات مسیر", e)
     
     def on_route_change(self, spinner, text):
         self.update_route_info()
     
     def save_log(self, instance):
-        log_data = {}
-        for key, input_field in self.inputs.items():
-            log_data[key] = input_field.text
-        
-        if not log_data['visit_date']:
-            self.show_message('خطا', 'تاریخ ویزیت الزامی است')
-            return
-        
-        for key in ['visited_customers_count', 'successful_invoices_count', 'successful_units_count', 'successful_sales_amount']:
-            if key in log_data and (log_data[key] == '' or log_data[key] == '0'):
-                log_data[key] = '0'
-        
-        all_logs = get_daily_logs()
-        
-        if log_data['visit_date'] in all_logs:
-            content = BoxLayout(orientation='vertical', padding=20, spacing=15)
-            content.add_widget(Label(text=f('ویزیتی با این تاریخ قبلاً ثبت شده است. آیا می‌خواهید جایگزین شود؟'), size_hint_y=None, height=60))
+        try:
+            log_data = {}
+            for key, input_field in self.inputs.items():
+                log_data[key] = input_field.text
             
-            btn_layout = BoxLayout(spacing=10, size_hint_y=None, height=50)
-            yes_btn = Button(text=f('بله، جایگزین شود'))
-            no_btn = Button(text=f('خیر، انصراف'))
-            btn_layout.add_widget(yes_btn)
-            btn_layout.add_widget(no_btn)
-            content.add_widget(btn_layout)
+            if not log_data['visit_date']:
+                self.show_message('خطا', 'تاریخ ویزیت الزامی است')
+                return
             
-            popup = Popup(title=f('توجه'), content=content, size_hint=(0.85, 0.35))
+            for key in ['visited_customers_count', 'successful_invoices_count', 'successful_units_count', 'successful_sales_amount']:
+                if key in log_data and (log_data[key] == '' or log_data[key] == '0'):
+                    log_data[key] = '0'
             
-            def replace(instance):
+            all_logs = get_daily_logs()
+            
+            if log_data['visit_date'] in all_logs:
+                content = BoxLayout(orientation='vertical', padding=20, spacing=15)
+                content.add_widget(Label(text=f('ویزیتی با این تاریخ قبلاً ثبت شده است. آیا می‌خواهید جایگزین شود؟'), size_hint_y=None, height=60))
+                
+                btn_layout = BoxLayout(spacing=10, size_hint_y=None, height=50)
+                yes_btn = Button(text=f('بله، جایگزین شود'))
+                no_btn = Button(text=f('خیر، انصراف'))
+                btn_layout.add_widget(yes_btn)
+                btn_layout.add_widget(no_btn)
+                content.add_widget(btn_layout)
+                
+                popup = Popup(title=f('توجه'), content=content, size_hint=(0.85, 0.35))
+                
+                def replace(instance):
+                    save_daily_log(log_data['visit_date'], log_data)
+                    popup.dismiss()
+                    self.show_message('موفق', 'اطلاعات ویزیت با موفقیت جایگزین شد')
+                    self.clear_form()
+                    logger.info(f"ویزیت تاریخ {log_data['visit_date']} جایگزین شد")
+                
+                def cancel(instance):
+                    popup.dismiss()
+                
+                yes_btn.bind(on_press=replace)
+                no_btn.bind(on_press=cancel)
+                popup.open()
+            else:
                 save_daily_log(log_data['visit_date'], log_data)
-                popup.dismiss()
-                self.show_message('موفق', 'اطلاعات ویزیت با موفقیت جایگزین شد')
+                self.show_message('موفق', 'اطلاعات ویزیت با موفقیت ذخیره شد')
                 self.clear_form()
-            
-            def cancel(instance):
-                popup.dismiss()
-            
-            yes_btn.bind(on_press=replace)
-            no_btn.bind(on_press=cancel)
-            popup.open()
-        else:
-            save_daily_log(log_data['visit_date'], log_data)
-            self.show_message('موفق', 'اطلاعات ویزیت با موفقیت ذخیره شد')
-            self.clear_form()
+                logger.info(f"ویزیت جدید برای تاریخ {log_data['visit_date']} ذخیره شد")
+        except Exception as e:
+            logger.error("خطا در ذخیره لاگ", e)
+            self.show_message('خطا', f'خطا در ذخیره اطلاعات: {str(e)}')
     
     def clear_form(self):
         for key in ['first_visit_time', 'last_visit_time', 'clock_out']:
@@ -1179,237 +1516,301 @@ class UserScreen(Screen):
                 self.inputs[key].text = '0'
     
     def go_to_report(self, instance):
+        logger.info("باز شدن صفحه گزارش")
         self.manager.current = 'report'
     
     def logout(self, instance):
+        logger.info("خروج از صفحه کاربر")
         self.manager.current = 'login'
     
     def show_message(self, title, message):
-        content = BoxLayout(orientation='vertical', padding=20, spacing=10)
-        content.add_widget(Label(text=f(message), size_hint_y=None, height=50))
-        btn = Button(text=f('باشه'), size_hint_y=None, height=40)
-        content.add_widget(btn)
-        popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
-        btn.bind(on_press=popup.dismiss)
-        popup.open()
+        try:
+            content = BoxLayout(orientation='vertical', padding=20, spacing=10)
+            content.add_widget(Label(text=f(message), size_hint_y=None, height=50))
+            btn = Button(text=f('باشه'), size_hint_y=None, height=40)
+            content.add_widget(btn)
+            popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
+            btn.bind(on_press=popup.dismiss)
+            popup.open()
+        except Exception as e:
+            logger.error(f"خطا در نمایش پیام", e)
 
 
 class ReportScreen(Screen):
     """صفحه گزارشات"""
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.build_ui()
+        try:
+            logger.info("در حال ساخت صفحه ReportScreen")
+            super().__init__(**kwargs)
+            self.build_ui()
+            logger.info("صفحه ReportScreen با موفقیت ساخته شد")
+        except Exception as e:
+            logger.error("خطا در ساخت ReportScreen", e)
+            raise
     
     def build_ui(self):
-        layout = BoxLayout(orientation='vertical')
-        
-        header = Label(text=f('📊 گزارش عملکرد'), size_hint_y=0.07, font_size='20sp')
-        layout.add_widget(header)
-        
-        stats_scroll = ScrollView(size_hint_y=0.5)
-        self.stats_layout = GridLayout(cols=1, spacing=8, size_hint_y=None, padding=15)
-        self.stats_layout.bind(minimum_height=self.stats_layout.setter('height'))
-        stats_scroll.add_widget(self.stats_layout)
-        layout.add_widget(stats_scroll)
-        
-        btn_layout = BoxLayout(size_hint_y=0.12, spacing=10, padding=10)
-        
-        refresh_btn = Button(text=f('🔄 تازه سازی'), background_color=(0.4, 0.4, 0.8, 1))
-        refresh_btn.bind(on_press=self.refresh_stats)
-        btn_layout.add_widget(refresh_btn)
-        
-        excel_btn = Button(text=f('📎 خروجی Excel'), background_color=(0.2, 0.6, 0.2, 1))
-        excel_btn.bind(on_press=self.export_excel)
-        btn_layout.add_widget(excel_btn)
-        
-        pdf_btn = Button(text=f('📄 خروجی PDF'), background_color=(0.8, 0.2, 0.2, 1))
-        pdf_btn.bind(on_press=self.export_pdf)
-        btn_layout.add_widget(pdf_btn)
-        
-        back_btn = Button(text=f('🔙 بازگشت'), background_color=(0.5, 0.5, 0.5, 1))
-        back_btn.bind(on_press=self.go_back)
-        btn_layout.add_widget(back_btn)
-        
-        layout.add_widget(btn_layout)
-        self.add_widget(layout)
-        
-        self.refresh_stats(None)
+        try:
+            layout = BoxLayout(orientation='vertical')
+            
+            header = Label(text=f('📊 گزارش عملکرد'), size_hint_y=0.07, font_size='20sp')
+            layout.add_widget(header)
+            
+            stats_scroll = ScrollView(size_hint_y=0.5)
+            self.stats_layout = GridLayout(cols=1, spacing=8, size_hint_y=None, padding=15)
+            self.stats_layout.bind(minimum_height=self.stats_layout.setter('height'))
+            stats_scroll.add_widget(self.stats_layout)
+            layout.add_widget(stats_scroll)
+            
+            btn_layout = BoxLayout(size_hint_y=0.12, spacing=10, padding=10)
+            
+            refresh_btn = Button(text=f('🔄 تازه سازی'), background_color=(0.4, 0.4, 0.8, 1))
+            refresh_btn.bind(on_press=self.refresh_stats)
+            btn_layout.add_widget(refresh_btn)
+            
+            excel_btn = Button(text=f('📎 خروجی Excel'), background_color=(0.2, 0.6, 0.2, 1))
+            excel_btn.bind(on_press=self.export_excel)
+            btn_layout.add_widget(excel_btn)
+            
+            pdf_btn = Button(text=f('📄 خروجی PDF'), background_color=(0.8, 0.2, 0.2, 1))
+            pdf_btn.bind(on_press=self.export_pdf)
+            btn_layout.add_widget(pdf_btn)
+            
+            back_btn = Button(text=f('🔙 بازگشت'), background_color=(0.5, 0.5, 0.5, 1))
+            back_btn.bind(on_press=self.go_back)
+            btn_layout.add_widget(back_btn)
+            
+            layout.add_widget(btn_layout)
+            self.add_widget(layout)
+            
+            self.refresh_stats(None)
+            logger.info("UI صفحه ReportScreen ساخته شد")
+        except Exception as e:
+            logger.error("خطا در ساخت UI ReportScreen", e)
+            raise
     
     def refresh_stats(self, instance):
-        self.stats_layout.clear_widgets()
-        
-        logs = get_daily_logs()
-        
-        if not logs:
-            self.stats_layout.add_widget(Label(text=f('📭 هیچ داده‌ای وجود ندارد'), size_hint_y=None, height=50, font_size='16sp'))
-            return
-        
-        total_sales = 0
-        total_invoices = 0
-        total_visits = 0
-        total_units = 0
-        
-        for date, log in logs.items():
-            try:
-                sales_val = log.get('successful_sales_amount', '0')
-                total_sales += int(sales_val) if str(sales_val).isdigit() else 0
-                total_invoices += int(log.get('successful_invoices_count', '0')) if str(log.get('successful_invoices_count', '0')).isdigit() else 0
-                total_visits += int(log.get('visited_customers_count', '0')) if str(log.get('visited_customers_count', '0')).isdigit() else 0
-                total_units += int(log.get('successful_units_count', '0')) if str(log.get('successful_units_count', '0')).isdigit() else 0
-            except:
-                pass
-        
-        self.stats_layout.add_widget(Label(text=f('📊 خلاصه آمار کل'), size_hint_y=None, height=45, font_size='18sp', bold=True))
-        
-        stats_row1 = BoxLayout(size_hint_y=None, height=60, spacing=10)
-        card1 = self.make_stat_card(f('💰 کل فروش'), f"{total_sales:,}", 'Rial', (0.2, 0.6, 0.2, 1))
-        card2 = self.make_stat_card(f('🧾 فاکتورها'), str(total_invoices), '', (0.2, 0.5, 0.8, 1))
-        stats_row1.add_widget(card1)
-        stats_row1.add_widget(card2)
-        self.stats_layout.add_widget(stats_row1)
-        
-        stats_row2 = BoxLayout(size_hint_y=None, height=60, spacing=10)
-        card3 = self.make_stat_card(f('👥 ویزیت‌ها'), str(total_visits), '', (0.8, 0.5, 0.2, 1))
-        card4 = self.make_stat_card(f('📦 واحد فروش'), str(total_units), '', (0.6, 0.3, 0.7, 1))
-        stats_row2.add_widget(card3)
-        stats_row2.add_widget(card4)
-        self.stats_layout.add_widget(stats_row2)
-        
-        stats_row3 = BoxLayout(size_hint_y=None, height=60, spacing=10)
-        card5 = self.make_stat_card(f('📅 روزهای کاری'), str(len(logs)), '', (0.3, 0.6, 0.6, 1))
-        avg_sale = total_sales // total_invoices if total_invoices > 0 else 0
-        card6 = self.make_stat_card(f('📈 میانگین فاکتور'), f"{avg_sale:,}", 'Rial', (0.7, 0.4, 0.4, 1))
-        stats_row3.add_widget(card5)
-        stats_row3.add_widget(card6)
-        self.stats_layout.add_widget(stats_row3)
-        
-        if total_visits > 0:
-            avg_per_visit = total_sales // total_visits
-            stats_row4 = BoxLayout(size_hint_y=None, height=60, spacing=10)
-            card7 = self.make_stat_card(f('🎯 فروش هر ویزیت'), f"{avg_per_visit:,}", 'Rial', (0.4, 0.5, 0.3, 1))
-            stats_row4.add_widget(card7)
-            self.stats_layout.add_widget(stats_row4)
-        
-        self.stats_layout.add_widget(Label(text=f(''), size_hint_y=None, height=10))
-        self.stats_layout.add_widget(Label(text=f('📋 لیست ویزیت‌های ثبت شده'), size_hint_y=None, height=40, font_size='16sp', bold=True))
-        
-        header_box = BoxLayout(size_hint_y=None, height=40, spacing=2)
-        header_date = Button(text=f('تاریخ'), size_hint_x=0.25, background_color=(0.2, 0.5, 0.8, 1), color=(1, 1, 1, 1))
-        header_visit = Button(text=f('ویزیت'), size_hint_x=0.25, background_color=(0.2, 0.5, 0.8, 1), color=(1, 1, 1, 1))
-        header_invoice = Button(text=f('فاکتور'), size_hint_x=0.25, background_color=(0.2, 0.5, 0.8, 1), color=(1, 1, 1, 1))
-        header_sales = Button(text=f('فروش (ریال)'), size_hint_x=0.25, background_color=(0.2, 0.5, 0.8, 1), color=(1, 1, 1, 1))
-        header_box.add_widget(header_date)
-        header_box.add_widget(header_visit)
-        header_box.add_widget(header_invoice)
-        header_box.add_widget(header_sales)
-        self.stats_layout.add_widget(header_box)
-        
-        sorted_logs = sorted(logs.items(), key=lambda x: x[0], reverse=True)
-        
-        for idx, (date, log) in enumerate(sorted_logs):
-            row_box = BoxLayout(size_hint_y=None, height=35, spacing=2)
-            row_box.add_widget(Label(text=date, size_hint_x=0.25))
-            row_box.add_widget(Label(text=log.get('visited_customers_count', '0'), size_hint_x=0.25))
-            row_box.add_widget(Label(text=log.get('successful_invoices_count', '0'), size_hint_x=0.25))
+        try:
+            self.stats_layout.clear_widgets()
             
-            sales = log.get('successful_sales_amount', '0')
-            sales_num = int(sales) if str(sales).isdigit() else 0
-            row_box.add_widget(Label(text=f"{sales_num:,}", size_hint_x=0.25))
+            logs = get_daily_logs()
             
-            self.stats_layout.add_widget(row_box)
+            if not logs:
+                self.stats_layout.add_widget(Label(text=f('📭 هیچ داده‌ای وجود ندارد'), size_hint_y=None, height=50, font_size='16sp'))
+                return
+            
+            total_sales = 0
+            total_invoices = 0
+            total_visits = 0
+            total_units = 0
+            
+            for date, log in logs.items():
+                try:
+                    sales_val = log.get('successful_sales_amount', '0')
+                    total_sales += int(sales_val) if str(sales_val).isdigit() else 0
+                    total_invoices += int(log.get('successful_invoices_count', '0')) if str(log.get('successful_invoices_count', '0')).isdigit() else 0
+                    total_visits += int(log.get('visited_customers_count', '0')) if str(log.get('visited_customers_count', '0')).isdigit() else 0
+                    total_units += int(log.get('successful_units_count', '0')) if str(log.get('successful_units_count', '0')).isdigit() else 0
+                except:
+                    pass
+            
+            self.stats_layout.add_widget(Label(text=f('📊 خلاصه آمار کل'), size_hint_y=None, height=45, font_size='18sp', bold=True))
+            
+            stats_row1 = BoxLayout(size_hint_y=None, height=60, spacing=10)
+            card1 = self.make_stat_card(f('💰 کل فروش'), f"{total_sales:,}", 'Rial', (0.2, 0.6, 0.2, 1))
+            card2 = self.make_stat_card(f('🧾 فاکتورها'), str(total_invoices), '', (0.2, 0.5, 0.8, 1))
+            stats_row1.add_widget(card1)
+            stats_row1.add_widget(card2)
+            self.stats_layout.add_widget(stats_row1)
+            
+            stats_row2 = BoxLayout(size_hint_y=None, height=60, spacing=10)
+            card3 = self.make_stat_card(f('👥 ویزیت‌ها'), str(total_visits), '', (0.8, 0.5, 0.2, 1))
+            card4 = self.make_stat_card(f('📦 واحد فروش'), str(total_units), '', (0.6, 0.3, 0.7, 1))
+            stats_row2.add_widget(card3)
+            stats_row2.add_widget(card4)
+            self.stats_layout.add_widget(stats_row2)
+            
+            stats_row3 = BoxLayout(size_hint_y=None, height=60, spacing=10)
+            card5 = self.make_stat_card(f('📅 روزهای کاری'), str(len(logs)), '', (0.3, 0.6, 0.6, 1))
+            avg_sale = total_sales // total_invoices if total_invoices > 0 else 0
+            card6 = self.make_stat_card(f('📈 میانگین فاکتور'), f"{avg_sale:,}", 'Rial', (0.7, 0.4, 0.4, 1))
+            stats_row3.add_widget(card5)
+            stats_row3.add_widget(card6)
+            self.stats_layout.add_widget(stats_row3)
+            
+            if total_visits > 0:
+                avg_per_visit = total_sales // total_visits
+                stats_row4 = BoxLayout(size_hint_y=None, height=60, spacing=10)
+                card7 = self.make_stat_card(f('🎯 فروش هر ویزیت'), f"{avg_per_visit:,}", 'Rial', (0.4, 0.5, 0.3, 1))
+                stats_row4.add_widget(card7)
+                self.stats_layout.add_widget(stats_row4)
+            
+            self.stats_layout.add_widget(Label(text=f(''), size_hint_y=None, height=10))
+            self.stats_layout.add_widget(Label(text=f('📋 لیست ویزیت‌های ثبت شده'), size_hint_y=None, height=40, font_size='16sp', bold=True))
+            
+            header_box = BoxLayout(size_hint_y=None, height=40, spacing=2)
+            header_date = Button(text=f('تاریخ'), size_hint_x=0.25, background_color=(0.2, 0.5, 0.8, 1), color=(1, 1, 1, 1))
+            header_visit = Button(text=f('ویزیت'), size_hint_x=0.25, background_color=(0.2, 0.5, 0.8, 1), color=(1, 1, 1, 1))
+            header_invoice = Button(text=f('فاکتور'), size_hint_x=0.25, background_color=(0.2, 0.5, 0.8, 1), color=(1, 1, 1, 1))
+            header_sales = Button(text=f('فروش (ریال)'), size_hint_x=0.25, background_color=(0.2, 0.5, 0.8, 1), color=(1, 1, 1, 1))
+            header_box.add_widget(header_date)
+            header_box.add_widget(header_visit)
+            header_box.add_widget(header_invoice)
+            header_box.add_widget(header_sales)
+            self.stats_layout.add_widget(header_box)
+            
+            sorted_logs = sorted(logs.items(), key=lambda x: x[0], reverse=True)
+            
+            for idx, (date, log) in enumerate(sorted_logs):
+                row_box = BoxLayout(size_hint_y=None, height=35, spacing=2)
+                row_box.add_widget(Label(text=date, size_hint_x=0.25))
+                row_box.add_widget(Label(text=log.get('visited_customers_count', '0'), size_hint_x=0.25))
+                row_box.add_widget(Label(text=log.get('successful_invoices_count', '0'), size_hint_x=0.25))
+                
+                sales = log.get('successful_sales_amount', '0')
+                sales_num = int(sales) if str(sales).isdigit() else 0
+                row_box.add_widget(Label(text=f"{sales_num:,}", size_hint_x=0.25))
+                
+                self.stats_layout.add_widget(row_box)
+            
+            logger.info("آمار به‌روزرسانی شد")
+        except Exception as e:
+            logger.error("خطا در به‌روزرسانی آمار", e)
+            self.show_message('خطا', f'خطا در بارگذاری آمار: {str(e)}')
     
     def make_stat_card(self, title, value, unit, color):
-        card = BoxLayout(orientation='vertical', size_hint_x=0.5, size_hint_y=None, height=60, padding=5, spacing=2)
-        title_label = Label(text=title, size_hint_y=None, height=20, font_size='12sp')
-        value_label = Label(text=f"{value} {unit}", size_hint_y=None, height=30, font_size='18sp', bold=True)
-        card.add_widget(title_label)
-        card.add_widget(value_label)
-        
-        with card.canvas.before:
-            Color(*color)
-            self.bg_rect = Rectangle(pos=card.pos, size=card.size)
-            card.bind(pos=self.update_bg, size=self.update_bg)
-            card.bg_color = color
-            card.bg_rect = self.bg_rect
-        return card
+        try:
+            card = BoxLayout(orientation='vertical', size_hint_x=0.5, size_hint_y=None, height=60, padding=5, spacing=2)
+            title_label = Label(text=title, size_hint_y=None, height=20, font_size='12sp')
+            value_label = Label(text=f"{value} {unit}", size_hint_y=None, height=30, font_size='18sp', bold=True)
+            card.add_widget(title_label)
+            card.add_widget(value_label)
+            
+            with card.canvas.before:
+                Color(*color)
+                self.bg_rect = Rectangle(pos=card.pos, size=card.size)
+                card.bind(pos=self.update_bg, size=self.update_bg)
+                card.bg_color = color
+                card.bg_rect = self.bg_rect
+            return card
+        except Exception as e:
+            logger.error("خطا در ساخت کارت آماری", e)
+            return Label(text=f"{title}: {value}")
     
     def update_bg(self, instance, value):
-        instance.bg_rect.pos = instance.pos
-        instance.bg_rect.size = instance.size
+        try:
+            instance.bg_rect.pos = instance.pos
+            instance.bg_rect.size = instance.size
+        except:
+            pass
     
     def export_excel(self, instance):
-        filepath = export_to_excel()
-        if filepath:
-            self.show_message('موفق', 'فایل Excel ذخیره شد')
-        else:
-            self.show_message('خطا', 'هیچ داده‌ای وجود ندارد')
+        try:
+            filepath = export_to_excel()
+            if filepath:
+                self.show_message('موفق', 'فایل Excel ذخیره شد')
+                logger.info(f"فایل Excel در {filepath} ذخیره شد")
+            else:
+                self.show_message('خطا', 'هیچ داده‌ای وجود ندارد')
+        except Exception as e:
+            logger.error("خطا در خروجی Excel", e)
+            self.show_message('خطا', f'خطا در ساخت Excel: {str(e)}')
     
     def export_pdf(self, instance):
-        filepath = export_to_pdf()
-        if filepath:
-            self.show_message('موفق', 'فایل PDF ذخیره شد')
-        else:
-            self.show_message('خطا', 'هیچ داده‌ای وجود ندارد')
+        try:
+            filepath = export_to_pdf()
+            if filepath:
+                self.show_message('موفق', 'فایل PDF ذخیره شد')
+                logger.info(f"فایل PDF در {filepath} ذخیره شد")
+            else:
+                self.show_message('خطا', 'هیچ داده‌ای وجود ندارد')
+        except Exception as e:
+            logger.error("خطا در خروجی PDF", e)
+            self.show_message('خطا', f'خطا در ساخت PDF: {str(e)}')
     
     def go_back(self, instance):
+        logger.info("بازگشت از صفحه گزارش")
         self.manager.current = 'user'
     
     def show_message(self, title, message):
-        content = BoxLayout(orientation='vertical', padding=20, spacing=10)
-        content.add_widget(Label(text=message, size_hint_y=None, height=50))
-        btn = Button(text='باشه', size_hint_y=None, height=40)
-        content.add_widget(btn)
-        popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
-        btn.bind(on_press=popup.dismiss)
-        popup.open()
+        try:
+            content = BoxLayout(orientation='vertical', padding=20, spacing=10)
+            content.add_widget(Label(text=message, size_hint_y=None, height=50))
+            btn = Button(text='باشه', size_hint_y=None, height=40)
+            content.add_widget(btn)
+            popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
+            btn.bind(on_press=popup.dismiss)
+            popup.open()
+        except Exception as e:
+            logger.error(f"خطا در نمایش پیام", e)
 
 
 class SettingsLoginScreen(Screen):
     """صفحه ورود به تنظیمات"""
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.build_ui()
+        try:
+            logger.info("در حال ساخت صفحه SettingsLoginScreen")
+            super().__init__(**kwargs)
+            self.build_ui()
+            logger.info("صفحه SettingsLoginScreen با موفقیت ساخته شد")
+        except Exception as e:
+            logger.error("خطا در ساخت SettingsLoginScreen", e)
+            raise
     
     def build_ui(self):
-        layout = BoxLayout(orientation='vertical', spacing=20, padding=40)
-        
-        title = Label(text=f('ورود به تنظیمات سیستم'), font_size='24sp', size_hint_y=0.2)
-        layout.add_widget(title)
-        
-        self.password_input = RTLTextInput(hint_text='رمز عبور مدیر', password=True, multiline=False, size_hint_y=None, height=50)
-        layout.add_widget(self.password_input)
-        
-        btn_layout = BoxLayout(spacing=10, size_hint_y=None, height=50)
-        login_btn = Button(text=f('ورود'), background_color=(0.2, 0.6, 1, 1))
-        login_btn.bind(on_press=self.check_login)
-        btn_layout.add_widget(login_btn)
-        
-        back_btn = Button(text=f('بازگشت'), background_color=(0.5, 0.5, 0.5, 1))
-        back_btn.bind(on_press=self.go_back)
-        btn_layout.add_widget(back_btn)
-        
-        layout.add_widget(btn_layout)
-        self.add_widget(layout)
+        try:
+            layout = BoxLayout(orientation='vertical', spacing=20, padding=40)
+            
+            title = Label(text=f('ورود به تنظیمات سیستم'), font_size='24sp', size_hint_y=0.2)
+            layout.add_widget(title)
+            
+            self.password_input = RTLTextInput(hint_text='رمز عبور مدیر', password=True, multiline=False, size_hint_y=None, height=50)
+            layout.add_widget(self.password_input)
+            
+            btn_layout = BoxLayout(spacing=10, size_hint_y=None, height=50)
+            login_btn = Button(text=f('ورود'), background_color=(0.2, 0.6, 1, 1))
+            login_btn.bind(on_press=self.check_login)
+            btn_layout.add_widget(login_btn)
+            
+            back_btn = Button(text=f('بازگشت'), background_color=(0.5, 0.5, 0.5, 1))
+            back_btn.bind(on_press=self.go_back)
+            btn_layout.add_widget(back_btn)
+            
+            layout.add_widget(btn_layout)
+            self.add_widget(layout)
+            logger.info("UI صفحه SettingsLoginScreen ساخته شد")
+        except Exception as e:
+            logger.error("خطا در ساخت UI SettingsLoginScreen", e)
+            raise
     
     def check_login(self, instance):
-        hashed = get_admin_password()
-        if hashed and verify_password(self.password_input.text, hashed):
-            self.manager.current = 'admin_settings'
-        else:
-            self.show_message('خطا', 'رمز عبور اشتباه است')
-            self.password_input.text = ''
+        try:
+            hashed = get_admin_password()
+            if hashed and verify_password(self.password_input.text, hashed):
+                logger.info("ورود موفق به تنظیمات مدیر")
+                self.manager.current = 'admin_settings'
+            else:
+                logger.warning("ورود ناموفق به تنظیمات مدیر")
+                self.show_message('خطا', 'رمز عبور اشتباه است')
+                self.password_input.text = ''
+        except Exception as e:
+            logger.error("خطا در ورود به تنظیمات", e)
+            self.show_message('خطا', f'خطا در ورود: {str(e)}')
     
     def go_back(self, instance):
+        logger.info("بازگشت از صفحه تنظیمات")
         self.manager.current = 'login'
     
     def show_message(self, title, message):
-        content = BoxLayout(orientation='vertical', padding=20, spacing=10)
-        content.add_widget(Label(text=f(message), size_hint_y=None, height=50))
-        btn = Button(text=f('باشه'), size_hint_y=None, height=40)
-        content.add_widget(btn)
-        popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
-        btn.bind(on_press=popup.dismiss)
-        popup.open()
+        try:
+            content = BoxLayout(orientation='vertical', padding=20, spacing=10)
+            content.add_widget(Label(text=f(message), size_hint_y=None, height=50))
+            btn = Button(text=f('باشه'), size_hint_y=None, height=40)
+            content.add_widget(btn)
+            popup = Popup(title=f(title), content=content, size_hint=(0.8, 0.35))
+            btn.bind(on_press=popup.dismiss)
+            popup.open()
+        except Exception as e:
+            logger.error(f"خطا در نمایش پیام", e)
 
 
 class ScreenManagement(ScreenManager):
@@ -1420,62 +1821,115 @@ class ScreenManagement(ScreenManager):
 class MainApp(App):
     """کلاس اصلی برنامه"""
     def build(self):
-        # مقداردهی اولیه مسیر ذخیره‌سازی
-        self.data_path = init_data_path()
-        os.makedirs(os.path.join(self.data_path, 'reports'), exist_ok=True)
-        
-        self.init_json_files()
-        
-        sm = ScreenManagement()
-        sm.add_widget(LoginScreen(name='login'))
-        sm.add_widget(AdminScreen(name='admin'))
-        sm.add_widget(UserScreen(name='user'))
-        sm.add_widget(ReportScreen(name='report'))
-        sm.add_widget(RegisterScreen(name='register'))
-        sm.add_widget(AdminSettingsScreen(name='admin_settings'))
-        sm.add_widget(SettingsLoginScreen(name='settings_login'))
-        
-        return sm
+        try:
+            logger.info("="*60)
+            logger.info("شروع برنامه مدیریت ویزیت")
+            logger.info("="*60)
+            
+            # مقداردهی اولیه مسیر ذخیره‌سازی
+            self.data_path = init_data_path()
+            os.makedirs(os.path.join(self.data_path, 'reports'), exist_ok=True)
+            os.makedirs(os.path.join(self.data_path, 'logs'), exist_ok=True)
+            
+            self.init_json_files()
+            
+            sm = ScreenManagement()
+            sm.add_widget(LoginScreen(name='login'))
+            sm.add_widget(AdminScreen(name='admin'))
+            sm.add_widget(UserScreen(name='user'))
+            sm.add_widget(ReportScreen(name='report'))
+            sm.add_widget(RegisterScreen(name='register'))
+            sm.add_widget(AdminSettingsScreen(name='admin_settings'))
+            sm.add_widget(SettingsLoginScreen(name='settings_login'))
+            
+            logger.info("برنامه با موفقیت راه‌اندازی شد")
+            return sm
+        except Exception as e:
+            logger.error("خطا در راه‌اندازی برنامه", e)
+            # نمایش خطا به کاربر
+            self.show_fatal_error(str(e))
+            raise
+    
+    def show_fatal_error(self, error_message):
+        """نمایش خطای مرگبار به کاربر"""
+        try:
+            from kivy.uix.popup import Popup
+            from kivy.uix.label import Label
+            from kivy.uix.button import Button
+            from kivy.uix.boxlayout import BoxLayout
+            
+            content = BoxLayout(orientation='vertical', padding=20, spacing=15)
+            content.add_widget(Label(text=f"خطای بحرانی در برنامه:\n{error_message}", size_hint_y=None, height=100))
+            
+            # نمایش مسیر فایل لاگ
+            log_path = logger.get_log_file_path()
+            if log_path:
+                content.add_widget(Label(text=f"فایل لاگ:\n{log_path}", size_hint_y=None, height=60, font_size='12sp'))
+            
+            btn = Button(text='خروج', size_hint_y=None, height=50)
+            content.add_widget(btn)
+            
+            popup = Popup(title='خطای برنامه', content=content, size_hint=(0.9, 0.5))
+            btn.bind(on_press=popup.dismiss)
+            popup.open()
+        except:
+            pass
     
     def init_json_files(self):
         """ایجاد فایل‌های JSON اولیه در صورت نبودن"""
-        default_data = {
-            'definitions.json': {
-                'agents': [],
-                'routes': [],
-                'customers': []
-            },
-            'settings.json': {
-                'supervision_rate': 0.3,
-                'conversion_rate': 0.25,
-                'avg_invoice_amount': 1000000,
-                'target_amount': 50000000,
-                'target_count': 100,
-                'target_invoice_count': 20,
-                'target_customer_count': 50,
-                'target_new_customer_count': 10,
-                'target_cash_sales': 30000000,
-                'target_credit_sales': 20000000,
-                'work_start_time': '08:00',
-                'first_visit_time': '09:00',
-                'min_daily_hours': 6,
-                'first_customer_of_route': ''
-            },
-            'daily_log.json': {},
-            'users.json': {'users': []},
-            'codes.json': {'codes': []},
-            'admin_password.json': {'hashed_password': ''}
-        }
-        
-        from utils.storage import get_data_path, save_json, load_json
-        data_path = get_data_path()
-        
-        for filename, default_content in default_data.items():
-            filepath = os.path.join(data_path, filename)
-            if not os.path.exists(filepath):
-                save_json(filename, default_content)
-                print(f"✅ فایل {filename} ایجاد شد")
+        try:
+            default_data = {
+                'definitions.json': {
+                    'agents': [],
+                    'routes': [],
+                    'customers': []
+                },
+                'settings.json': {
+                    'supervision_rate': 0.3,
+                    'conversion_rate': 0.25,
+                    'avg_invoice_amount': 1000000,
+                    'target_amount': 50000000,
+                    'target_count': 100,
+                    'target_invoice_count': 20,
+                    'target_customer_count': 50,
+                    'target_new_customer_count': 10,
+                    'target_cash_sales': 30000000,
+                    'target_credit_sales': 20000000,
+                    'work_start_time': '08:00',
+                    'first_visit_time': '09:00',
+                    'min_daily_hours': 6,
+                    'first_customer_of_route': ''
+                },
+                'daily_log.json': {},
+                'users.json': {'users': []},
+                'codes.json': {'codes': []},
+                'admin_password.json': {'hashed_password': ''}
+            }
+            
+            from utils.storage import get_data_path, save_json, load_json
+            data_path = get_data_path()
+            
+            for filename, default_content in default_data.items():
+                filepath = os.path.join(data_path, filename)
+                if not os.path.exists(filepath):
+                    save_json(filename, default_content)
+                    logger.info(f"فایل {filename} ایجاد شد")
+        except Exception as e:
+            logger.error("خطا در ایجاد فایل‌های JSON اولیه", e)
+            raise
 
 
 if __name__ == '__main__':
-    MainApp().run()
+    try:
+        MainApp().run()
+    except Exception as e:
+        print(f"خطای بحرانی در اجرای برنامه: {e}")
+        traceback.print_exc()
+        # در صورت بروز خطا، یک فایل لاگ جداگانه در پوشه فعلی ایجاد کن
+        try:
+            with open('emergency_log.txt', 'w', encoding='utf-8') as f:
+                f.write(f"خطای بحرانی: {e}\n")
+                f.write(traceback.format_exc())
+            print("فایل emergency_log.txt در پوشه فعلی ایجاد شد.")
+        except:
+            pass
