@@ -40,14 +40,23 @@ jobs:
       run: |
         pip install -q buildozer cython==0.29.37
 
-    # 🔥 بخش اصلی و جدید برای حل مشکل Clang
+    # 🔥 بخش اصلاح شده برای حل مشکل Clang
     - name: Set GCC as default compiler
       run: |
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc 100
-        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++ 100
+        # نصب GCC اگر موجود نباشه
+        sudo apt-get install -y gcc g++
+        
+        # تنظیم متغیرهای محیطی
         echo "CC=gcc" >> $GITHUB_ENV
         echo "CXX=g++" >> $GITHUB_ENV
         echo "LD=g++" >> $GITHUB_ENV
+        
+        # ایجاد symlink برای اطمینان
+        sudo ln -sf /usr/bin/gcc /usr/local/bin/cc
+        sudo ln -sf /usr/bin/g++ /usr/local/bin/c++
+        
+        # نمایش نسخه برای تایید
+        gcc --version
 
     - name: Build with Buildozer
       run: |
