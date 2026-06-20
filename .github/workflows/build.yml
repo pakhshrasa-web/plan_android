@@ -19,7 +19,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk python3-pip git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev cmake libffi-dev libssl-dev
+          sudo apt-get install -y openjdk-17-jdk python3-pip git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev cmake libffi-dev libssl-dev openssl
       
       - name: Install Buildozer
         run: |
@@ -36,7 +36,7 @@ jobs:
           source.dir = .
           source.include_exts = py,png,jpg,kv,atlas,ttf,json,db
           version = 1.0
-          requirements = hostpython3==3.10.0,python3==3.10.0,kivy==2.1.0,kivymd==1.1.1,openpyxl,jdatetime,arabic-reshaper,python-bidi
+          requirements = hostpython3==3.10.0,python3==3.10.0,kivy==2.1.0,kivymd==1.1.1,openpyxl,jdatetime,arabic-reshaper,python-bidi,reportlab,plyer
           orientation = portrait
           fullscreen = 0
           android.api = 30
