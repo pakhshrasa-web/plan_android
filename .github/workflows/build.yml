@@ -50,7 +50,7 @@ jobs:
         sudo ln -sf /usr/bin/g++ /usr/local/bin/c++
         gcc --version
 
-    # ✅ ایجاد فایل buildozer.spec قبل از Build
+    # 🔥 بخش اصلاح شده: اضافه شدن تنظیمات android.manifest.extra
     - name: Create buildozer.spec
       run: |
         cat > buildozer.spec << 'EOF'
@@ -77,15 +77,16 @@ jobs:
         android.minapi = 21
         android.ndk = 25b
         android.archs = armeabi-v7a
-        android.add_src =
-        android.add_assets =
-        android.gradle_dependencies =
+
         android.permissions = INTERNET
         android.enable_androidx = True
         android.allow_backup = True
         android.unsafe_ssl = False
         android.presplash_color = #FFFFFF
         android.ignore_manifest = False
+
+        # 🔥 این خط مشکل دکمه برگشت رو حل میکنه
+        android.manifest.extra = <application android:enableOnBackInvokedCallback="true" />
         EOF
 
     - name: Build with Buildozer
