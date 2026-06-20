@@ -40,23 +40,53 @@ jobs:
       run: |
         pip install -q buildozer cython==0.29.37
 
-    # 🔥 بخش اصلاح شده برای حل مشکل Clang
     - name: Set GCC as default compiler
       run: |
-        # نصب GCC اگر موجود نباشه
         sudo apt-get install -y gcc g++
-        
-        # تنظیم متغیرهای محیطی
         echo "CC=gcc" >> $GITHUB_ENV
         echo "CXX=g++" >> $GITHUB_ENV
         echo "LD=g++" >> $GITHUB_ENV
-        
-        # ایجاد symlink برای اطمینان
         sudo ln -sf /usr/bin/gcc /usr/local/bin/cc
         sudo ln -sf /usr/bin/g++ /usr/local/bin/c++
-        
-        # نمایش نسخه برای تایید
         gcc --version
+
+    # ✅ ایجاد فایل buildozer.spec قبل از Build
+    - name: Create buildozer.spec
+      run: |
+        cat > buildozer.spec << 'EOF'
+        [app]
+        title = Plan Android
+        package.name = planandroid
+        package.domain = org.pakhshrasa
+
+        source.dir = .
+        source.include_exts = py,png,jpg,kv,atlas,ttf
+        version = 0.1
+        requirements = python3,kivy,kivymd,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests
+        orientation = portrait
+        fullscreen = 0
+
+        [buildozer]
+        log_level = 2
+        warn_on_root = 1
+
+        [buildozer:android]
+        android.sdk_path = /home/runner/.buildozer/android/platform/android-sdk
+        android.ndk_path = /home/runner/.buildozer/android/platform/android-ndk-r25b
+        android.api = 33
+        android.minapi = 21
+        android.ndk = 25b
+        android.archs = armeabi-v7a
+        android.add_src =
+        android.add_assets =
+        android.gradle_dependencies =
+        android.permissions = INTERNET
+        android.enable_androidx = True
+        android.allow_backup = True
+        android.unsafe_ssl = False
+        android.presplash_color = #FFFFFF
+        android.ignore_manifest = False
+        EOF
 
     - name: Build with Buildozer
       run: |
@@ -71,39 +101,3 @@ jobs:
       with:
         name: app
         path: bin/*.apk
-- name: Create buildozer.spec
-  run: |
-    cat > buildozer.spec << 'EOF'
-    [app]
-    title = Plan Android
-    package.name = planandroid
-    package.domain = org.pakhshrasa
-
-    source.dir = .
-    source.include_exts = py,png,jpg,kv,atlas,ttf
-    version = 0.1
-    requirements = python3,kivy,kivymd,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests
-    orientation = portrait
-    fullscreen = 0
-
-    [buildozer]
-    log_level = 2
-    warn_on_root = 1
-
-    [buildozer:android]
-    android.sdk_path = /home/runner/.buildozer/android/platform/android-sdk
-    android.ndk_path = /home/runner/.buildozer/android/platform/android-ndk-r25b
-    android.api = 33
-    android.minapi = 21
-    android.ndk = 25b
-    android.archs = armeabi-v7a
-    android.add_src =
-    android.add_assets =
-    android.gradle_dependencies =
-    android.permissions = INTERNET
-    android.enable_androidx = True
-    android.allow_backup = True
-    android.unsafe_ssl = False
-    android.presplash_color = #FFFFFF
-    android.ignore_manifest = False
-    EOF
