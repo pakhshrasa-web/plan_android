@@ -36,7 +36,7 @@ jobs:
           source.dir = .
           source.include_exts = py,png,jpg,kv,atlas,ttf,json,db
           version = 1.0
-          requirements = hostpython3==3.10.0,python3==3.10.0,kivy==2.1.0,kivymd==1.1.1,openpyxl,jdatetime,arabic-reshaper,python-bidi,reportlab,plyer
+          requirements = hostpython3==3.10.0,python3==3.10.0,kivy==2.1.0,kivymd==1.0.2,openpyxl,jdatetime,arabic-reshaper,python-bidi,reportlab,plyer
           orientation = portrait
           fullscreen = 0
           android.api = 30
