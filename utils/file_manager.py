@@ -1,30 +1,71 @@
 """
-مدیریت فایل‌های JSON - نسخه کامل
+مدیریت فایل‌های JSON - نسخه کامل با پشتیبانی از اندروید
 """
 
 import os
 import json
 from kivy.app import App
+from kivy.utils import platform
 
 def get_data_path():
-    """دریافت مسیر پوشه دیتا"""
-    app = App.get_running_app()
-    return app.data_path
+    """
+    دریافت مسیر پوشه دیتا
+    پشتیبانی از اندروید و دسکتاپ
+    """
+    try:
+        # اگر برنامه در حال اجراست
+        app = App.get_running_app()
+        if app:
+            # اگر user_data_dir وجود داره (اندروید)
+            if hasattr(app, 'user_data_dir'):
+                path = app.user_data_dir
+                os.makedirs(path, exist_ok=True)
+                return path
+            # اگر data_path وجود داره
+            elif hasattr(app, 'data_path'):
+                path = app.data_path
+                os.makedirs(path, exist_ok=True)
+                return path
+    except:
+        pass
+    
+    # Fallback برای اندروید با android.storage
+    if platform == 'android':
+        try:
+            from android.storage import app_storage_path
+            path = app_storage_path()
+            os.makedirs(path, exist_ok=True)
+            return path
+        except:
+            pass
+    
+    # Fallback نهایی
+    path = os.path.join(os.getcwd(), 'data')
+    os.makedirs(path, exist_ok=True)
+    return path
 
 
 def load_json(filename):
     """بارگذاری فایل JSON"""
-    filepath = os.path.join(get_data_path(), filename)
-    if os.path.exists(filepath):
-        with open(filepath, 'r', encoding='utf-8') as f:
-            return json.load(f)
+    try:
+        filepath = os.path.join(get_data_path(), filename)
+        if os.path.exists(filepath):
+            with open(filepath, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"⚠️ خطا در بارگذاری {filename}: {e}")
     return {}
 
 def save_json(filename, data):
     """ذخیره فایل JSON"""
-    filepath = os.path.join(get_data_path(), filename)
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    try:
+        filepath = os.path.join(get_data_path(), filename)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        print(f"❌ خطا در ذخیره {filename}: {e}")
+        return False
 
 # ========== مدیریت عامل‌ها ==========
 def get_agents():
