@@ -83,18 +83,14 @@ jobs:
         android.presplash_color = #FFFFFF
         android.ignore_manifest = False
 
-        # ====== مهم: غیرفعال کردن دیباگ و فعال کردن ریلیز ======
+        # ====== حالت Release ======
         android.debug = False
         android.release = True
         EOF
 
-    - name: Build with Buildozer (Release)
+    - name: Build with Buildozer
       run: |
         echo "y" | buildozer -v android release
-      env:
-        CC: gcc
-        CXX: g++
-        LD: g++
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
