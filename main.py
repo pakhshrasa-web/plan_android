@@ -21,7 +21,23 @@ from kivy.uix.popup import Popup
 from kivy.graphics import Color, Rectangle
 from kivy.utils import platform
 from kivy.clock import Clock
+# در ابتدای main.py، بعد از import ها اضافه کن:
+import sys
+import traceback
 
+def exception_handler(exc_type, exc_value, exc_tb):
+    error_msg = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    try:
+        with open('/sdcard/planandroid_crash.txt', 'w', encoding='utf-8') as f:
+            f.write(error_msg)
+        print("="*60)
+        print("❌ CRASH ERROR:")
+        print(error_msg)
+        print("="*60)
+    except Exception as e:
+        print(f"Could not write crash log: {e}")
+
+sys.excepthook = exception_handler
 # ========== سیستم نمایش خطا (پاپ‌آپ با قابلیت کپی) ==========
 class ErrorPopup:
     """نمایش خطا به صورت پنجره بازشو با قابلیت کپی متن"""
