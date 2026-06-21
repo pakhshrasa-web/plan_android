@@ -82,11 +82,15 @@ jobs:
         android.unsafe_ssl = False
         android.presplash_color = #FFFFFF
         android.ignore_manifest = False
+
+        # ====== تغییر مهم: حالت Release ======
+        android.debug = False
+        android.release = True
         EOF
 
-    - name: Build with Buildozer
+    - name: Build with Buildozer (Release)
       run: |
-        echo "y" | buildozer -v android debug
+        echo "y" | buildozer -v android release
       env:
         CC: gcc
         CXX: g++
@@ -95,7 +99,7 @@ jobs:
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
+        name: app-release
         path: bin/*.apk
         retention-days: 30
         if-no-files-found: error
