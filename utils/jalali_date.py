@@ -30,8 +30,11 @@ def convert_to_gregorian(jalali_str):
         return ""
     try:
         parts = jalali_str.split('/')
+        if len(parts) != 3:
+            return jalali_str
         year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
-        gregorian = jdatetime.date(year, month, day).togregorian()
+        jd = jdatetime.date(year, month, day)
+        gregorian = jd.togregorian()
         return gregorian.strftime('%Y-%m-%d')
     except:
         return jalali_str
@@ -55,14 +58,18 @@ def get_jalali_month_days(year, month):
     elif 7 <= month <= 11:
         return 30
     else:  # اسفند
-        # بررسی سال کبیسه شمسی
-        return 30 if jdatetime.date(year, 12, 30).month == 12 else 29
+        try:
+            return 30 if jdatetime.date(year, 12, 30).month == 12 else 29
+        except:
+            return 29
 
 def get_weekday_jalali(date_str):
     """دریافت نام روز هفته به فارسی"""
     days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه']
     try:
         parts = date_str.split('/')
+        if len(parts) != 3:
+            return ""
         year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
         jd = jdatetime.date(year, month, day)
         return days[jd.weekday()]
