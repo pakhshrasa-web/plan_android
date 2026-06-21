@@ -29,35 +29,27 @@ class ErrorPopup:
     @staticmethod
     def show_error(error_message, error_details=""):
         try:
-            # ساخت محتوای پاپ‌آپ
             content = BoxLayout(orientation='vertical', padding=20, spacing=15)
             
-            # عنوان خطا
             title_label = Label(text="[b][color=ff3333]⚠️ خطا در برنامه[/color][/b]", 
                                markup=True, size_hint_y=None, height=50, font_size='18sp')
             content.add_widget(title_label)
             
-            # پیام خطا
             msg_label = Label(text=f"[b]خطا:[/b] {error_message}", 
                              markup=True, size_hint_y=None, height=60, text_size=(400, None), halign='left')
             content.add_widget(msg_label)
             
-            # جزئیات خطا (قابل کپی)
             if error_details:
                 detail_label = Label(text=f"[b]جزئیات:[/b]\n{error_details}", 
                                      markup=True, size_hint_y=None, height=300, 
                                      text_size=(400, None), halign='left', font_size='12sp')
-                # اضافه کردن اسکرول برای جزئیات طولانی
                 scroll = ScrollView(size_hint_y=None, height=300)
                 scroll.add_widget(detail_label)
                 content.add_widget(scroll)
             else:
-                # اگر جزئیات نبود، یک Label خالی برای فاصله
                 content.add_widget(Label(text="", size_hint_y=None, height=20))
             
-            # دکمه کپی و بستن
             btn_layout = BoxLayout(size_hint_y=None, height=50, spacing=10)
-            
             copy_btn = Button(text='📋 کپی متن خطا', background_color=(0.2, 0.4, 0.8, 1))
             close_btn = Button(text='✖ بستن', background_color=(0.8, 0.2, 0.2, 1))
             
@@ -65,28 +57,22 @@ class ErrorPopup:
             btn_layout.add_widget(close_btn)
             content.add_widget(btn_layout)
             
-            # ایجاد پاپ‌آپ
             popup = Popup(title='[b]گزارش خطا[/b]', 
                           content=content, 
                           size_hint=(0.92, 0.75),
                           auto_dismiss=False,
                           markup=True)
             
-            # تابع کپی کردن متن
             def copy_error(instance):
                 full_text = f"خطا: {error_message}\n\nجزئیات:\n{error_details}"
-                # تلاش برای کپی در کلیپ‌بورد
                 try:
                     from kivy.core.clipboard import Clipboard
                     Clipboard.copy(full_text)
-                    # نمایش پیام کوتاه
                     copy_btn.text = '✅ کپی شد!'
                     Clock.schedule_once(lambda dt: setattr(copy_btn, 'text', '📋 کپی متن خطا'), 2)
                 except:
-                    # اگر کلیپ‌بورد کار نکرد، به کاربر بگو خودش کپی کنه
                     copy_btn.text = '⚠️ دستی کپی کن'
             
-            # تابع بستن
             def close_popup(instance):
                 popup.dismiss()
             
@@ -95,13 +81,11 @@ class ErrorPopup:
             
             popup.open()
             
-            # همچنین خطا رو توی کنسول چاپ کن (برای زمانی که از طریق ADB وصل میشی)
             print("="*60)
             print(f"❌ خطا: {error_message}")
             print(f"📋 جزئیات:\n{error_details}")
             print("="*60)
             
-            # تلاش برای ذخیره در فایل (به عنوان پشتیبان)
             try:
                 from utils.storage import get_data_path
                 data_path = get_data_path()
@@ -113,7 +97,6 @@ class ErrorPopup:
                     f.write(f"جزئیات:\n{error_details}\n")
                     f.write("="*60 + "\n")
             except:
-                # اگر نتوانست در مسیر برنامه ذخیره کنه، در حافظه داخلی ذخیره کن
                 try:
                     with open('/sdcard/planandroid_error.txt', 'w', encoding='utf-8') as f:
                         f.write(f"خطا: {error_message}\n\n")
@@ -122,24 +105,19 @@ class ErrorPopup:
                     pass
                     
         except Exception as e:
-            # اگر خود پاپ‌آپ هم خطا داد، توی کنسول چاپ کن
             print(f"❌ خطا در نمایش پاپ‌آپ: {e}")
 
 # ========== هندلر سراسری خطا ==========
 def global_exception_handler(exc_type, exc_value, exc_tb):
-    """گرفتن تمام خطاهای ثبت نشده و نمایش آنها"""
     error_msg = str(exc_value)
     error_details = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
     ErrorPopup.show_error(error_msg, error_details)
 
-# تنظیم هندلر سراسری
 sys.excepthook = global_exception_handler
 
 # ========== مدیریت مسیرها و فونت ==========
 def get_app_root():
-    """دریافت مسیر ذخیره‌سازی برنامه در سیستم‌عامل‌های مختلف"""
     from kivy.utils import platform
-    
     if platform == 'android':
         try:
             from android.storage import app_storage_path
@@ -150,7 +128,6 @@ def get_app_root():
         return os.getcwd()
 
 def get_font_path():
-    """دریافت مسیر فایل فونت - قابل استفاده در همه سیستم‌عامل‌ها"""
     possible_paths = [
         os.path.join(os.path.dirname(__file__), 'fonts', 'Vazirmatn-Regular.ttf'),
         os.path.join(os.path.dirname(__file__), 'fonts', 'Vazirmatn.ttf'),
@@ -164,7 +141,6 @@ def get_font_path():
             return path
     return None
 
-# بارگذاری فونت (در صورت وجود)
 font_path = get_font_path()
 if font_path:
     try:
@@ -177,13 +153,12 @@ else:
     print("ℹ️ فونت فارسی یافت نشد، استفاده از فونت پیش‌فرض")
     Config.set('kivy', 'default_font', ['Arial'])
 
-# تنظیم اندازه پنجره برای دسکتاپ
 if platform != 'android':
     Window.size = (400, 650)
 
 # ========== ایمپورت ماژول‌های برنامه ==========
 try:
-    from utils.rtl import RTLTextInput, RTLSpinner  # اصلاح: rtl_widgets -> rtl
+    from utils.rtl import RTLTextInput, RTLSpinner
     from utils.text_helper import f
     from utils.storage import get_data_path, init_data_path
     from utils.file_manager import (
@@ -207,10 +182,9 @@ except Exception as e:
 # ========== تعریف نقش‌ها ==========
 ROLES = ['بازاریاب', 'سوپروایزر', 'سرپرست', 'مدیر', 'حسابدار', 'موزع', 'راننده', 'انباردار', 'سایر']
 
-# ========== صفحات برنامه (همگی با try-except) ==========
+# ========== صفحات برنامه ==========
 
 class LoginScreen(Screen):
-    """صفحه ورود به سیستم"""
     def __init__(self, **kwargs):
         try:
             super().__init__(**kwargs)
@@ -290,7 +264,6 @@ class LoginScreen(Screen):
 
 
 class RegisterScreen(Screen):
-    """صفحه ثبت نام کاربر جدید"""
     def __init__(self, **kwargs):
         try:
             super().__init__(**kwargs)
@@ -382,7 +355,6 @@ class RegisterScreen(Screen):
 
 
 class AdminSettingsScreen(Screen):
-    """تنظیمات مدیر"""
     def __init__(self, **kwargs):
         try:
             super().__init__(**kwargs)
@@ -697,7 +669,6 @@ class AdminSettingsScreen(Screen):
 
 
 class AdminScreen(Screen):
-    """پنل مدیریت"""
     def __init__(self, **kwargs):
         try:
             super().__init__(**kwargs)
@@ -1269,7 +1240,6 @@ class AdminScreen(Screen):
 
 
 class UserScreen(Screen):
-    """صفحه ثبت ویزیت روزانه"""
     def __init__(self, **kwargs):
         try:
             super().__init__(**kwargs)
@@ -1358,7 +1328,6 @@ class UserScreen(Screen):
             sales_amount = RTLTextInput(text='0', multiline=False, size_hint_y=None, height=40, input_filter='int')
             self.form_layout.add_widget(sales_amount)
             
-            # ====== اصلاح: تبدیل target_amount به int قبل از format ======
             target_amount = self.settings.get('target_amount', 50000000)
             try:
                 target_amount = int(target_amount)
@@ -1517,7 +1486,6 @@ class UserScreen(Screen):
 
 
 class ReportScreen(Screen):
-    """صفحه گزارشات"""
     def __init__(self, **kwargs):
         try:
             super().__init__(**kwargs)
@@ -1721,7 +1689,6 @@ class ReportScreen(Screen):
 
 
 class SettingsLoginScreen(Screen):
-    """صفحه ورود به تنظیمات"""
     def __init__(self, **kwargs):
         try:
             super().__init__(**kwargs)
@@ -1787,15 +1754,12 @@ class SettingsLoginScreen(Screen):
 
 
 class ScreenManagement(ScreenManager):
-    """مدیریت صفحات"""
     pass
 
 
 class MainApp(App):
-    """کلاس اصلی برنامه"""
     def build(self):
         try:
-            # مقداردهی اولیه مسیر ذخیره‌سازی
             self.data_path = init_data_path()
             os.makedirs(os.path.join(self.data_path, 'reports'), exist_ok=True)
             
@@ -1810,7 +1774,6 @@ class MainApp(App):
             sm.add_widget(AdminSettingsScreen(name='admin_settings'))
             sm.add_widget(SettingsLoginScreen(name='settings_login'))
             
-            # ====== مدیریت دکمه Back در اندروید ======
             from kivy.core.window import Window
             Window.bind(on_keyboard=self.on_keyboard)
             
@@ -1818,20 +1781,15 @@ class MainApp(App):
         except Exception as e:
             error_details = traceback.format_exc()
             ErrorPopup.show_error(f"خطا در راه‌اندازی برنامه: {e}", error_details)
-            # برگرداندن یه صفحه خالی برای جلوگیری از کرش کامل
             return ScreenManager()
     
     def on_keyboard(self, window, key, *args):
-        """مدیریت دکمه Back در اندروید"""
-        if key == 27:  # کلید Back
+        if key == 27:
             current_screen = self.root.current
             
-            # اگر در صفحه ورود هستیم، برنامه بسته شود
             if current_screen == 'login':
                 self.stop()
                 return True
-            
-            # اگر در صفحات دیگر هستیم، به صفحه قبلی برگردیم
             elif current_screen == 'admin_settings':
                 self.root.current = 'settings_login'
                 return True
@@ -1854,7 +1812,6 @@ class MainApp(App):
         return False
     
     def init_json_files(self):
-        """ایجاد فایل‌های JSON اولیه در صورت نبودن"""
         try:
             default_data = {
                 'definitions.json': {
@@ -1904,7 +1861,6 @@ if __name__ == '__main__':
         MainApp().run()
     except Exception as e:
         error_details = traceback.format_exc()
-        # تلاش برای نمایش خطا (اگر برنامه باز نشد)
         try:
             from kivy.uix.popup import Popup
             from kivy.uix.label import Label
@@ -1925,7 +1881,6 @@ if __name__ == '__main__':
             
             EmergencyApp().run()
         except:
-            # اگر هیچ کاری نشد، توی کنسول چاپ کن
             print("="*60)
             print(f"❌ خطای بحرانی: {e}")
             print(error_details)
