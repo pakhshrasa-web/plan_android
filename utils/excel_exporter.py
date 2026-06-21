@@ -9,6 +9,21 @@ from openpyxl.utils import get_column_letter
 
 from utils.file_manager import get_daily_logs, get_data_path
 
+def safe_int(value, default=0):
+    """تبدیل امن به عدد صحیح"""
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+def safe_str(value, default=''):
+    """تبدیل امن به رشته"""
+    if value is None:
+        return default
+    return str(value)
+
 def export_to_excel():
     """خروجی گرفتن از تمام ویزیت‌ها به فایل Excel"""
     
@@ -57,30 +72,29 @@ def export_to_excel():
     
     for idx, (date, log) in enumerate(sorted_logs, 1):
         ws1.cell(row=row, column=1, value=idx)
-        ws1.cell(row=row, column=2, value=date)
-        ws1.cell(row=row, column=3, value=log.get('clock_in', ''))
-        ws1.cell(row=row, column=4, value=log.get('first_visit_time', ''))
-        ws1.cell(row=row, column=5, value=log.get('first_customer', ''))
+        ws1.cell(row=row, column=2, value=safe_str(date))
+        ws1.cell(row=row, column=3, value=safe_str(log.get('clock_in', '')))
+        ws1.cell(row=row, column=4, value=safe_str(log.get('first_visit_time', '')))
+        ws1.cell(row=row, column=5, value=safe_str(log.get('first_customer', '')))
         
-        visit_val = log.get('visited_customers_count', '0')
-        ws1.cell(row=row, column=6, value=int(visit_val) if str(visit_val).isdigit() else 0)
+        visit_val = safe_int(log.get('visited_customers_count', 0))
+        ws1.cell(row=row, column=6, value=visit_val)
         
-        inv_val = log.get('successful_invoices_count', '0')
-        ws1.cell(row=row, column=7, value=int(inv_val) if str(inv_val).isdigit() else 0)
+        inv_val = safe_int(log.get('successful_invoices_count', 0))
+        ws1.cell(row=row, column=7, value=inv_val)
         
-        units_val = log.get('successful_units_count', '0')
-        ws1.cell(row=row, column=8, value=int(units_val) if str(units_val).isdigit() else 0)
+        units_val = safe_int(log.get('successful_units_count', 0))
+        ws1.cell(row=row, column=8, value=units_val)
         
-        sales = log.get('successful_sales_amount', '0')
-        sales_num = int(sales) if str(sales).isdigit() else 0
+        sales_num = safe_int(log.get('successful_sales_amount', 0))
         ws1.cell(row=row, column=9, value=sales_num)
         
-        ws1.cell(row=row, column=10, value=log.get('last_visit_time', ''))
-        ws1.cell(row=row, column=11, value=log.get('clock_out', ''))
+        ws1.cell(row=row, column=10, value=safe_str(log.get('last_visit_time', '')))
+        ws1.cell(row=row, column=11, value=safe_str(log.get('clock_out', '')))
         
         total_sales += sales_num
-        total_invoices += int(inv_val) if str(inv_val).isdigit() else 0
-        total_visits += int(visit_val) if str(visit_val).isdigit() else 0
+        total_invoices += inv_val
+        total_visits += visit_val
         
         row += 1
     
