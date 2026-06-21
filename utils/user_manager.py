@@ -79,19 +79,16 @@ def register_user(code, username, password, phone, email):
     
     users = get_users()
     
-    # بررسی تکراری نبودن نام کاربری
     for u in users:
         if u.get('username') == username:
             return False, "این نام کاربری قبلاً ثبت شده است"
     
-    # ✅ هش کردن رمز عبور قبل از ذخیره
     hashed_password = hash_password(password)
     
-    # ثبت کاربر جدید
     new_user = {
         'id': len(users) + 1,
         'username': username,
-        'hashed_password': hashed_password,  # ✅ ذخیره هش شده
+        'hashed_password': hashed_password,
         'role': code_info.get('role', 'بازاریاب'),
         'name': code_info.get('name', ''),
         'phone': phone,
@@ -101,7 +98,6 @@ def register_user(code, username, password, phone, email):
     users.append(new_user)
     save_users(users)
     
-    # غیرفعال کردن کد
     codes = get_codes()
     for c in codes:
         if c.get('code') == code:
@@ -113,16 +109,13 @@ def register_user(code, username, password, phone, email):
 
 def login(username, password):
     """ورود به سیستم با بررسی رمز هش شده"""
-    # ✅ کاربران عادی
     users = get_users()
     for user in users:
         if user.get('username') == username:
-            # بررسی رمز عبور هش شده
             if verify_password(password, user.get('hashed_password', '')):
                 return user
             return None
     
-    # ✅ کاربر ادمین از فایل auth
     from utils.auth import get_admin_password, verify_password
     admin_hashed = get_admin_password()
     if username == 'admin' and admin_hashed and verify_password(password, admin_hashed):
@@ -151,3 +144,33 @@ def get_user_by_username(username):
         if user.get('username') == username:
             return user
     return None
+
+def get_next_id(items):
+    """تولید ID جدید"""
+    if not items:
+        return 1
+    return max([item.get('id', 0) for item in items]) + 1
+
+def change_password(username, old_password, new_password):
+    """تغییر رمز عبور کاربر"""
+    user = get_user_by_username(username)
+    if not user:
+        return False, "کاربر یافت نشد"
+    
+    if not verify_password(old_password, user.get('hashed_password', '')):
+        return False, "رمز عبور فعلی اشتباه است"
+    
+    user['hashed_password'] = hash_password(new_password)
+    
+    users = get_users()
+    for i, u in enumerate(users):
+        if u.get('id') == user.get('id'):
+            users[i] = user
+            break
+    save_users(users)
+    return True, "رمز عبور با موفقیت تغییر کرد"
+
+def get_users_by_role(role):
+    """دریافت کاربران بر اساس نقش"""
+    users = get_users()
+    return [u for u in users if u.get('role') == role]
