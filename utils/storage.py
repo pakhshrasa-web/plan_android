@@ -14,7 +14,7 @@ def init_data_path():
     if _data_path is not None:
         return _data_path
     
-    app_name = 'planandroid'  # نام ثابت برنامه
+    app_name = 'planandroid'
     
     if platform == 'android':
         try:
@@ -27,7 +27,6 @@ def init_data_path():
                 raise Exception("app_storage_path returned None")
         except Exception as e:
             print(f"⚠️ خطا در دریافت مسیر اندروید: {e}")
-            # Fallback به مسیر داخلی
             _data_path = os.path.join('/data/data/org.pakhshrasa.planandroid/files', app_name)
     elif platform == 'win':
         _data_path = os.path.join(os.environ.get('APPDATA', os.getcwd()), app_name)
@@ -39,14 +38,12 @@ def init_data_path():
         _data_path = os.path.join(os.getcwd(), app_name)
         print(f"✅ مسیر پیش‌فرض: {_data_path}")
     
-    # ساخت پوشه‌ها با try-except
     try:
         os.makedirs(_data_path, exist_ok=True)
         os.makedirs(os.path.join(_data_path, 'reports'), exist_ok=True)
         print(f"✅ پوشه‌ها در {_data_path} ایجاد شدند")
     except Exception as e:
         print(f"❌ خطا در ایجاد پوشه: {e}")
-        # Fallback نهایی
         _data_path = os.path.join(os.getcwd(), app_name)
         os.makedirs(_data_path, exist_ok=True)
     
