@@ -50,7 +50,6 @@ jobs:
         sudo ln -sf /usr/bin/g++ /usr/local/bin/c++
         gcc --version
 
-    # 🔥 بخش اصلاح شده: اضافه شدن تنظیمات android.manifest.extra
     - name: Create buildozer.spec
       run: |
         cat > buildozer.spec << 'EOF'
@@ -85,13 +84,18 @@ jobs:
         android.presplash_color = #FFFFFF
         android.ignore_manifest = False
 
-        # 🔥 این خط مشکل دکمه برگشت رو حل میکنه
+        # 🔥 حل مشکل دکمه برگشت
         android.manifest.extra = <application android:enableOnBackInvokedCallback="true" />
+
+        # 🔥🔥🔥 غیرفعال کردن حالت دیباگ (رفع خطای Waiting for Debugger)
+        android.debug = False
+        android.release = True
         EOF
 
-    - name: Build with Buildozer
+    # 🔥 تغییر از debug به release
+    - name: Build with Buildozer (Release Mode)
       run: |
-        echo "y" | buildozer -v android debug
+        echo "y" | buildozer -v android release
       env:
         CC: gcc
         CXX: g++
