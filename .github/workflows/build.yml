@@ -61,8 +61,7 @@ jobs:
         source.dir = .
         source.include_exts = py,png,jpg,kv,atlas,ttf
         version = 0.1
-        # ====== مهم: حذف kivymd ======
-        requirements = python3,kivy,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests
+        requirements = python3,kivy==2.1.0,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests
         orientation = portrait
         fullscreen = 0
 
