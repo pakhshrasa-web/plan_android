@@ -2,11 +2,13 @@
 ویجت انتخاب فایل - نسخه بهینه برای اندروید و دسکتاپ
 """
 
+import os
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
 from kivy.utils import platform
+from kivy.clock import Clock
 
 # تلاش برای ایمپورت plyer در محیط اندروید
 try:
@@ -23,6 +25,7 @@ class FilePicker(BoxLayout):
         super().__init__(orientation='vertical', spacing=10, **kwargs)
         self.on_select = on_select
         self.selected_file = None
+        self._selection_pending = False
         
         self.select_btn = Button(
             text='📁 انتخاب فایل اکسل',
@@ -43,33 +46,29 @@ class FilePicker(BoxLayout):
     
     def pick_file(self, instance):
         """باز کردن دیالوگ انتخاب فایل"""
-        if platform == 'android':
-            # در اندروید از filechooser استفاده میکنیم
-            if PLYER_AVAILABLE:
-                try:
-                    filechooser.open_file(
-                        on_selection=self.file_selected,
-                        filters=[('Excel files', '*.xlsx', '*.xls')]
-                    )
-                except Exception as e:
-                    self.show_error_message(f"خطا در انتخاب فایل: {str(e)}")
-            else:
-                self.show_error_message("کتابخانه plyer در اندروید نصب نیست")
+        # جلوگیری از انتخاب همزمان
+        if self._selection_pending:
+            return
+        
+        self._selection_pending = True
+        
+        if PLYER_AVAILABLE:
+            try:
+                filechooser.open_file(
+                    on_selection=self.file_selected,
+                    filters=[('Excel files', '*.xlsx', '*.xls')]
+                )
+            except Exception as e:
+                self._selection_pending = False
+                self.show_error_message(f"خطا در انتخاب فایل: {str(e)}")
         else:
-            # در دسکتاپ از filechooser استفاده میکنیم
-            if PLYER_AVAILABLE:
-                try:
-                    filechooser.open_file(
-                        on_selection=self.file_selected,
-                        filters=[('Excel files', '*.xlsx', '*.xls')]
-                    )
-                except Exception as e:
-                    self.show_error_message(f"خطا در انتخاب فایل: {str(e)}")
-            else:
-                self.show_error_message("برای انتخاب فایل در ویندوز، کتابخانه plyer مورد نیاز است.")
+            self._selection_pending = False
+            self.show_error_message("کتابخانه انتخاب فایل در دسترس نیست")
     
     def file_selected(self, selection):
         """پس از انتخاب فایل"""
+        self._selection_pending = False
+        
         if selection:
             file_path = selection[0]
             # بررسی پسوند فایل
@@ -85,6 +84,9 @@ class FilePicker(BoxLayout):
                 self.file_label.text = '❌ فقط فایل‌های Excel (.xlsx, .xls) مجاز هستند'
                 self.file_label.color = (0.8, 0.2, 0.2, 1)  # قرمز
                 self.show_error_message("لطفاً یک فایل اکسل معتبر انتخاب کنید.")
+        else:
+            # کاربر انصراف داده
+            self._selection_pending = False
     
     def show_error_message(self, message):
         """نمایش پیغام خطا"""
@@ -109,5 +111,6 @@ class FilePicker(BoxLayout):
     def reset(self):
         """بازنشانی ویجت"""
         self.selected_file = None
+        self._selection_pending = False
         self.file_label.text = '📄 هیچ فایلی انتخاب نشده'
         self.file_label.color = (0.5, 0.5, 0.5, 1)
