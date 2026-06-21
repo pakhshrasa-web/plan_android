@@ -46,7 +46,6 @@ class FilePicker(BoxLayout):
     
     def pick_file(self, instance):
         """باز کردن دیالوگ انتخاب فایل"""
-        # جلوگیری از انتخاب همزمان
         if self._selection_pending:
             return
         
@@ -71,21 +70,19 @@ class FilePicker(BoxLayout):
         
         if selection:
             file_path = selection[0]
-            # بررسی پسوند فایل
             if file_path.lower().endswith(('.xlsx', '.xls')):
                 self.selected_file = file_path
                 filename = file_path.replace('\\', '/').split('/')[-1]
                 self.file_label.text = f'✅ فایل: {filename}'
-                self.file_label.color = (0.2, 0.7, 0.2, 1)  # سبز
+                self.file_label.color = (0.2, 0.7, 0.2, 1)
                 if self.on_select:
                     self.on_select(self.selected_file)
             else:
                 self.selected_file = None
                 self.file_label.text = '❌ فقط فایل‌های Excel (.xlsx, .xls) مجاز هستند'
-                self.file_label.color = (0.8, 0.2, 0.2, 1)  # قرمز
+                self.file_label.color = (0.8, 0.2, 0.2, 1)
                 self.show_error_message("لطفاً یک فایل اکسل معتبر انتخاب کنید.")
         else:
-            # کاربر انصراف داده
             self._selection_pending = False
     
     def show_error_message(self, message):
