@@ -95,14 +95,25 @@ jobs:
         CXX: g++
         LD: g++
 
-    - name: Convert AAB to APK
+    - name: Find and Convert AAB to APK
       run: |
+        # پیدا کردن فایل AAB
+        AAB_FILE=$(find . -name "*.aab" -type f | head -n 1)
+        echo "Found AAB: $AAB_FILE"
+        
+        # دانلود bundletool
         wget -q https://github.com/google/bundletool/releases/download/1.17.0/bundletool-all-1.17.0.jar -O bundletool.jar
+        
+        # تبدیل AAB به APK
         java -jar bundletool.jar build-apks \
-          --bundle=bin/*.aab \
+          --bundle="$AAB_FILE" \
           --output=app.apks \
-          --mode=universal
-        unzip app.apks -d apk_output
+          --mode=universal \
+          --overwrite
+        
+        # استخراج APK
+        unzip -o app.apks -d apk_output
+        mkdir -p bin
         cp apk_output/universal.apk bin/app-release.apk
 
     - name: Upload APK
