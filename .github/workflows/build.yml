@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
     - name: Checkout code
@@ -61,7 +61,6 @@ jobs:
         source.dir = .
         source.include_exts = py,png,jpg,kv,atlas,ttf
         version = 0.1
-        # ====== مهم: حذف kivy از requirements ======
         requirements = python3,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests
         orientation = portrait
         fullscreen = 0
@@ -84,18 +83,27 @@ jobs:
         android.presplash_color = #FFFFFF
         android.ignore_manifest = False
 
-        # ====== حالت Release ======
         android.debug = 0
         android.release = 1
         EOF
 
-    - name: Build with Buildozer (Release)
+    - name: Build with Buildozer
       run: |
         echo "y" | buildozer -v android release
       env:
         CC: gcc
         CXX: g++
         LD: g++
+
+    - name: Convert AAB to APK
+      run: |
+        wget -q https://github.com/google/bundletool/releases/download/1.17.0/bundletool-all-1.17.0.jar -O bundletool.jar
+        java -jar bundletool.jar build-apks \
+          --bundle=bin/*.aab \
+          --output=app.apks \
+          --mode=universal
+        unzip app.apks -d apk_output
+        cp apk_output/universal.apk bin/app-release.apk
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
