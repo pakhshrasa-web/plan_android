@@ -17,7 +17,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.11'
     
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -41,9 +41,9 @@ jobs:
         pip install --upgrade pip
         pip install cython virtualenv build wheel setuptools
     
-    - name: Install python-for-android
+    - name: Install python-for-android (نسخه پایدار 2024.1.21)
       run: |
-        pip install git+https://github.com/kivy/python-for-android.git@master
+        pip install python-for-android==2024.1.21
     
     - name: Generate Keystore
       run: |
@@ -60,7 +60,7 @@ jobs:
           --name="Plan Android" \
           --version=1.0.0 \
           --bootstrap=sdl2 \
-          --requirements=python3,kivy,kivymd,pyjnius,android,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests,cython \
+          --requirements=python3,kivy,kivymd,pyjnius,android,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests \
           --android-api=34 \
           --ndk-api=21 \
           --arch=armeabi-v7a \
