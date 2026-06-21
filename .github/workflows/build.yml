@@ -95,7 +95,14 @@ jobs:
         CXX: g++
         LD: g++
 
-    - name: Find and Convert AAB to APK
+    - name: Generate Keystore
+      run: |
+        keytool -genkey -v -keystore keystore.jks \
+          -alias myalias -keyalg RSA -keysize 2048 -validity 10000 \
+          -storepass password -keypass password \
+          -dname "CN=Plan Android, OU=Dev, O=Pakhshrasa, L=City, S=State, C=IR"
+
+    - name: Convert AAB to Signed APK
       run: |
         # پیدا کردن فایل AAB
         AAB_FILE=$(find . -name "*.aab" -type f | head -n 1)
@@ -104,11 +111,15 @@ jobs:
         # دانلود bundletool
         wget -q https://github.com/google/bundletool/releases/download/1.17.0/bundletool-all-1.17.0.jar -O bundletool.jar
         
-        # تبدیل AAB به APK
+        # تبدیل AAB به APK با امضا
         java -jar bundletool.jar build-apks \
           --bundle="$AAB_FILE" \
           --output=app.apks \
           --mode=universal \
+          --ks=keystore.jks \
+          --ks-pass=pass:password \
+          --ks-key-alias=myalias \
+          --key-pass=pass:password \
           --overwrite
         
         # استخراج APK
