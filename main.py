@@ -24,18 +24,42 @@ from kivy.clock import Clock
 # در ابتدای main.py، بعد از import ها اضافه کن:
 import sys
 import traceback
+import os
 
 def exception_handler(exc_type, exc_value, exc_tb):
     error_msg = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
-    try:
-        with open('/sdcard/planandroid_crash.txt', 'w', encoding='utf-8') as f:
-            f.write(error_msg)
-        print("="*60)
-        print("❌ CRASH ERROR:")
-        print(error_msg)
-        print("="*60)
-    except Exception as e:
-        print(f"Could not write crash log: {e}")
+    
+    # تلاش برای ذخیره در مسیرهای مختلف
+    paths = [
+        '/storage/emulated/0/planandroid_crash.txt',
+        '/sdcard/planandroid_crash.txt',
+        '/data/data/org.pakhshrasa.planandroid/files/crash.txt',
+    ]
+    
+    for path in paths:
+        try:
+            # اطمینان از وجود پوشه
+            dir_path = os.path.dirname(path)
+            if dir_path and not os.path.exists(dir_path):
+                os.makedirs(dir_path, exist_ok=True)
+            
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write("="*60 + "\n")
+                f.write("❌ CRASH ERROR:\n")
+                f.write("="*60 + "\n")
+                f.write(error_msg)
+                f.write("="*60 + "\n")
+            print(f"✅ Crash log saved to: {path}")
+            break  # اگر یک مسیر موفق شد، بقیه رو امتحان نکن
+        except Exception as e:
+            print(f"Could not write to {path}: {e}")
+            continue
+    
+    # چاپ در کنسول
+    print("="*60)
+    print("❌ CRASH ERROR:")
+    print(error_msg)
+    print("="*60)
 
 sys.excepthook = exception_handler
 # ========== سیستم نمایش خطا (پاپ‌آپ با قابلیت کپی) ==========
