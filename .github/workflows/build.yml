@@ -4,6 +4,15 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      build_method:
+        description: 'روش بیلد (buildozer یا p4a)'
+        required: true
+        default: 'buildozer'
+        type: choice
+        options:
+          - buildozer
+          - p4a
 
 jobs:
   build:
@@ -17,7 +26,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11'
+        python-version: '3.10'
     
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -27,33 +36,29 @@ jobs:
     
     - name: Install system dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          git zip unzip openjdk-17-jdk \
-          autoconf libtool pkg-config zlib1g-dev \
-          libncurses5-dev libncursesw5-dev libtinfo5 \
-          cmake libffi-dev libssl-dev \
-          python3-pip
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq \
+          build-essential git zip unzip \
+          autoconf libtool \
+          pkg-config zlib1g-dev libncurses5-dev \
+          libncursesw5-dev libtinfo5 cmake \
+          libffi-dev libssl-dev wget \
+          ccache
         sudo apt-get clean
     
-    - name: Install Python dependencies
+    - name: Install Python packages
       run: |
-        pip install --upgrade pip
-        pip install cython virtualenv build wheel setuptools
+        pip install -q buildozer cython==0.29.37
     
-    - name: Install python-for-android (نسخه پایدار 2024.1.21)
+    - name: Build with Buildozer
+      if: github.event.inputs.build_method == 'buildozer' || github.event_name == 'push'
+      run: |
+        echo "y" | buildozer -v android release
+    
+    - name: Build with p4a (Experimental)
+      if: github.event.inputs.build_method == 'p4a'
       run: |
         pip install python-for-android==2024.1.21
-    
-    - name: Generate Keystore
-      run: |
-        keytool -genkey -v -keystore keystore.jks \
-          -alias myalias -keyalg RSA -keysize 2048 -validity 10000 \
-          -storepass password -keypass password \
-          -dname "CN=Plan Android, OU=Dev, O=Pakhshrasa, L=City, S=State, C=IR"
-    
-    - name: Build APK with p4a
-      run: |
         p4a apk \
           --private . \
           --package=org.pakhshrasa.planandroid \
@@ -61,24 +66,20 @@ jobs:
           --version=1.0.0 \
           --bootstrap=sdl2 \
           --requirements=python3,kivy,kivymd,pyjnius,android,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests \
-          --android-api=34 \
+          --android-api=31 \
           --ndk-api=21 \
           --arch=armeabi-v7a \
           --arch=arm64-v8a \
           --permission=INTERNET \
           --permission=READ_EXTERNAL_STORAGE \
           --permission=WRITE_EXTERNAL_STORAGE \
-          --release \
-          --key-filename=keystore.jks \
-          --key-alias=myalias \
-          --key-store-password=password \
-          --key-alias-password=password \
+          --debug \
           --enable-onbackinvokedcallback
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-release
-        path: planandroid-*.apk
+        name: app
+        path: bin/*.apk
         retention-days: 30
         if-no-files-found: error
