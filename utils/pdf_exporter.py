@@ -26,8 +26,10 @@ def fix_text(text):
     """
     اصلاح متن فارسی برای نمایش درست در PDF
     """
-    if not text or not isinstance(text, str):
-        return text
+    if not text:
+        return ""
+    if not isinstance(text, str):
+        return str(text)
     
     if RTL_AVAILABLE:
         try:
@@ -35,8 +37,7 @@ def fix_text(text):
             return get_display(reshaped)
         except:
             return text
-    else:
-        return text
+    return text
 
 def get_font_path():
     """
@@ -44,8 +45,11 @@ def get_font_path():
     """
     possible_paths = [
         os.path.join(os.path.dirname(os.path.dirname(__file__)), 'fonts', 'Vazirmatn-Regular.ttf'),
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), 'fonts', 'Vazirmatn.ttf'),
         os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Vazirmatn-Regular.ttf'),
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Vazirmatn.ttf'),
         '/system/fonts/Vazirmatn-Regular.ttf',
+        '/system/fonts/Vazirmatn.ttf',
         '/system/fonts/Vazir.ttf',
         '/usr/share/fonts/truetype/vazirmatn/Vazirmatn-Regular.ttf',
     ]
@@ -68,6 +72,15 @@ if FONT_PATH:
         print(f"⚠️ خطا در ثبت فونت PDF: {e}")
 else:
     print("⚠️ فونت فارسی برای PDF یافت نشد، از فونت پیش‌فرض استفاده میشود")
+
+def safe_int(value, default=0):
+    """تبدیل امن به عدد صحیح"""
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
 
 def export_to_pdf(max_records=None):
     """
@@ -99,10 +112,7 @@ def export_to_pdf(max_records=None):
     )
     story = []
     
-    # تعریف استایل‌ها
     styles = getSampleStyleSheet()
-    
-    # نام فونت (با fallback)
     font_name = 'Vazirmatn' if FONT_REGISTERED else 'Helvetica'
     
     title_style = ParagraphStyle(
@@ -110,16 +120,14 @@ def export_to_pdf(max_records=None):
         parent=styles['Heading1'],
         fontName=font_name,
         fontSize=18,
-        alignment=1,  # center
+        alignment=1,
         spaceAfter=20,
         textColor=reportlab_colors.HexColor('#2E86C1')
     )
     
-    # عنوان
     story.append(Paragraph(fix_text("گزارش ویزیت‌های فروش"), title_style))
     story.append(Spacer(1, 5*mm))
     
-    # محاسبه آمار
     total_sales = 0
     total_invoices = 0
     total_visits = 0
@@ -127,18 +135,13 @@ def export_to_pdf(max_records=None):
     
     for log in logs.values():
         try:
-            sales_val = log.get('successful_sales_amount', '0')
-            total_sales += int(sales_val) if str(sales_val).isdigit() else 0
-            inv_val = log.get('successful_invoices_count', '0')
-            total_invoices += int(inv_val) if str(inv_val).isdigit() else 0
-            visit_val = log.get('visited_customers_count', '0')
-            total_visits += int(visit_val) if str(visit_val).isdigit() else 0
-            units_val = log.get('successful_units_count', '0')
-            total_units += int(units_val) if str(units_val).isdigit() else 0
+            total_sales += safe_int(log.get('successful_sales_amount', 0))
+            total_invoices += safe_int(log.get('successful_invoices_count', 0))
+            total_visits += safe_int(log.get('visited_customers_count', 0))
+            total_units += safe_int(log.get('successful_units_count', 0))
         except:
             pass
     
-    # جدول خلاصه آمار
     summary_data = [
         [fix_text('کل فروش'), fix_text(f"{total_sales:,} تومان")],
         [fix_text('تعداد فاکتورها'), fix_text(str(total_invoices))],
@@ -163,29 +166,25 @@ def export_to_pdf(max_records=None):
     story.append(summary_table)
     story.append(Spacer(1, 10*mm))
     
-    # جدول ویزیت‌ها
     headers = ["تاریخ", "ساعت شروع", "ویزیت", "فاکتور", "واحد", "فروش (تومان)"]
     data = [[fix_text(h) for h in headers]]
     
     sorted_logs = sorted(logs.items(), key=lambda x: x[0], reverse=True)
     
-    # محدود کردن تعداد رکوردها
     if max_records and len(sorted_logs) > max_records:
         sorted_logs = sorted_logs[:max_records]
     
     for date, log in sorted_logs:
-        sales = log.get('successful_sales_amount', '0')
-        sales_num = int(sales) if str(sales).isdigit() else 0
+        sales_num = safe_int(log.get('successful_sales_amount', 0))
         data.append([
             fix_text(date),
             fix_text(log.get('clock_in', '')),
-            fix_text(log.get('visited_customers_count', '0')),
-            fix_text(log.get('successful_invoices_count', '0')),
-            fix_text(log.get('successful_units_count', '0')),
+            fix_text(str(safe_int(log.get('visited_customers_count', 0)))),
+            fix_text(str(safe_int(log.get('successful_invoices_count', 0)))),
+            fix_text(str(safe_int(log.get('successful_units_count', 0)))),
             fix_text(f"{sales_num:,}")
         ])
     
-    # تنظیم عرض ستون‌ها
     col_widths = [28*mm, 25*mm, 18*mm, 18*mm, 18*mm, 33*mm]
     table = Table(data, colWidths=col_widths, repeatRows=1)
     
@@ -203,7 +202,6 @@ def export_to_pdf(max_records=None):
     
     story.append(table)
     
-    # ساخت PDF
     try:
         doc.build(story)
         return filepath
