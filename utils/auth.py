@@ -22,9 +22,12 @@ def verify_password(password, hashed_password):
     if not hashed_password or '$' not in hashed_password:
         return False
     
-    salt, stored_hash = hashed_password.split('$')
-    new_hash = hashlib.sha256((salt + password).encode()).hexdigest()
-    return new_hash == stored_hash
+    try:
+        salt, stored_hash = hashed_password.split('$')
+        new_hash = hashlib.sha256((salt + password).encode()).hexdigest()
+        return new_hash == stored_hash
+    except Exception:
+        return False
 
 def get_admin_password():
     """
