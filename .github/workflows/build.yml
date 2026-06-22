@@ -61,7 +61,8 @@ jobs:
         source.dir = .
         source.include_exts = py,png,jpg,kv,atlas,ttf
         version = 0.1
-        requirements = python3,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests
+        # ====== مهم: kivy بدون نسخه ======
+        requirements = python3,kivy,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests
         orientation = portrait
         fullscreen = 0
 
@@ -95,30 +96,16 @@ jobs:
         CXX: g++
         LD: g++
 
-    - name: Generate Keystore
-      run: |
-        keytool -genkey -v -keystore keystore.jks \
-          -alias myalias -keyalg RSA -keysize 2048 -validity 10000 \
-          -storepass password -keypass password \
-          -dname "CN=Plan Android, OU=Dev, O=Pakhshrasa, L=City, S=State, C=IR"
-
-    - name: Convert AAB to Signed APK
+    - name: Convert AAB to APK
       run: |
         AAB_FILE=$(find . -name "*.aab" -type f | head -n 1)
         echo "Found AAB: $AAB_FILE"
-        
         wget -q https://github.com/google/bundletool/releases/download/1.17.0/bundletool-all-1.17.0.jar -O bundletool.jar
-        
         java -jar bundletool.jar build-apks \
           --bundle="$AAB_FILE" \
           --output=app.apks \
           --mode=universal \
-          --ks=keystore.jks \
-          --ks-pass=pass:password \
-          --ks-key-alias=myalias \
-          --key-pass=pass:password \
           --overwrite
-        
         unzip -o app.apks -d apk_output
         mkdir -p bin
         cp apk_output/universal.apk bin/app-release.apk
