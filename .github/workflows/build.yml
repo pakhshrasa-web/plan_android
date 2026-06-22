@@ -61,8 +61,8 @@ jobs:
         source.dir = .
         source.include_exts = py,png,jpg,kv,atlas,ttf
         version = 0.1
-        # ====== مهم: استفاده از kivy 2.0.0 ======
-        requirements = python3,kivy==2.0.0,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests
+        # ====== مهم: حذف kivy از requirements ======
+        requirements = python3,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests
         orientation = portrait
         fullscreen = 0
 
