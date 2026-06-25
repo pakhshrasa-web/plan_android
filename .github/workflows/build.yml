@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 45
 
     steps:
     - name: Checkout code
@@ -59,9 +59,9 @@ jobs:
         package.domain = org.pakhshrasa
 
         source.dir = .
-        source.include_exts = py,png,jpg,kv,atlas,ttf
+        source.include_exts = py,png,jpg,kv,atlas,ttf,json
         version = 0.1
-        requirements = python3,kivy,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests
+        requirements = python3,kivy,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests,reportlab
         orientation = portrait
         fullscreen = 0
 
