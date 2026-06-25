@@ -166,75 +166,89 @@ def get_app_root():
     else:
         return os.getcwd()
 
-def get_font_path():
-    possible_paths = []
+# ========== تنظیم فونت ==========
+import os
+from kivy.config import Config
+from kivy.core.text import LabelBase
+from kivy.utils import platform
+
+def setup_font():
+    """تنظیم فونت فارسی - نسخه نهایی"""
     
-    # 1. اولویت با فونت‌های سیستمی اندروید
+    # لیست کامل مسیرهای احتمالی
+    font_paths = []
+    
+    # ۱. فونت‌های سیستمی اندروید (اولویت با فونت‌های عربی/فارسی)
     if platform == 'android':
-        system_fonts = [
+        android_fonts = [
             '/system/fonts/NotoSansArabic-Regular.ttf',
             '/system/fonts/NotoNaskhArabic-Regular.ttf',
             '/system/fonts/NotoSansArabicUI-Regular.ttf',
             '/system/fonts/DroidNaskh-Regular.ttf',
             '/system/fonts/DroidSansFallback.ttf',
-        ]
-        possible_paths.extend(system_fonts)
-    
-    # 2. سپس فونت‌های داخلی برنامه
-    app_fonts = [
-        os.path.join(os.path.dirname(__file__), 'fonts', 'Vazirmatn-Regular.ttf'),
-        os.path.join(os.path.dirname(__file__), 'fonts', 'Vazirmatn.ttf'),
-        os.path.join(os.path.dirname(__file__), 'Vazirmatn-Regular.ttf'),
-        os.path.join(os.path.dirname(__file__), 'Vazirmatn.ttf'),
-    ]
-    possible_paths.extend(app_fonts)
-    
-    # 3. نهایتاً فونت‌های سیستمی عمومی
-    if platform == 'android':
-        possible_paths.extend([
             '/system/fonts/NotoSansCJK-Regular.ttc',
+        ]
+        font_paths.extend(android_fonts)
+    
+    # ۲. فونت‌های داخلی برنامه
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    internal_fonts = [
+        os.path.join(base_dir, 'fonts', 'Vazirmatn-Regular.ttf'),
+        os.path.join(base_dir, 'fonts', 'Vazirmatn.ttf'),
+        os.path.join(base_dir, 'fonts', 'Vazirmatn-Farsi.ttf'),
+        os.path.join(base_dir, 'Vazirmatn-Regular.ttf'),
+    ]
+    font_paths.extend(internal_fonts)
+    
+    # ۳. فونت‌های عمومی
+    if platform == 'android':
+        general_fonts = [
             '/system/fonts/DroidSans.ttf',
-        ])
+            '/system/fonts/Roboto-Regular.ttf',
+        ]
+        font_paths.extend(general_fonts)
     
-    for path in possible_paths:
+    # پیدا کردن اولین فونت موجود
+    found_font = None
+    for path in font_paths:
         if os.path.exists(path):
+            found_font = path
             print(f"✅ فونت پیدا شد: {path}")
-            return path
+            break
     
-    print("⚠️ هیچ فونت فارسی پیدا نشد")
-    return None
-
-font_path = get_font_path()
-
-# ثبت فونت با نام‌های مختلف
-if font_path:
+    if not found_font:
+        print("⚠️ هیچ فونت فارسی پیدا نشد!")
+        Config.set('kivy', 'default_font', ['Roboto'])
+        return
+    
+    # ثبت فونت
     try:
-        # ثبت با نام‌های مختلف برای دسترسی آسان‌تر
-        LabelBase.register(name='Vazirmatn', fn_regular=font_path)
-        LabelBase.register(name='CustomFont', fn_regular=font_path)
-        LabelBase.register(name='Persian', fn_regular=font_path)
+        # ثبت با چندین نام مختلف
+        LabelBase.register(name='PersianFont', fn_regular=found_font)
+        LabelBase.register(name='Vazirmatn', fn_regular=found_font)
+        LabelBase.register(name='CustomFont', fn_regular=found_font)
         
-        # تنظیم فونت پیش‌فرض با اولویت‌بندی
-        Config.set('kivy', 'default_font', ['CustomFont', 'Vazirmatn', 'Persian', 'Roboto'])
-        print(f"✅ فونت با موفقیت از مسیر {font_path} بارگذاری شد")
+        # تنظیم فونت پیش‌فرض با اولویت
+        Config.set('kivy', 'default_font', [
+            'PersianFont',
+            'Vazirmatn',
+            'CustomFont',
+            'Roboto'
+        ])
         
-        # نمایش لیست فونت‌ها برای دیباگ
-        print("📋 لیست فونت‌های بارگذاری شده:")
+        print(f"✅ فونت با موفقیت تنظیم شد: {found_font}")
+        
+        # نمایش لیست فونت‌های بارگذاری شده
+        print("📋 فونت‌های موجود:")
         for name in LabelBase._fonts.keys():
             print(f"  - {name}")
             
     except Exception as e:
-        print(f"⚠️ خطا در بارگذاری فونت: {e}")
-        if platform == 'android':
-            Config.set('kivy', 'default_font', ['Roboto'])
-        else:
-            Config.set('kivy', 'default_font', ['Arial'])
-else:
-    print("ℹ️ فونت فارسی یافت نشد، استفاده از فونت پیش‌فرض")
-    if platform == 'android':
+        print(f"⚠️ خطا در تنظیم فونت: {e}")
         Config.set('kivy', 'default_font', ['Roboto'])
-    else:
-        Config.set('kivy', 'default_font', ['Arial'])
+
+# اجرای تنظیم فونت
+setup_font()
 
 if platform != 'android':
     Window.size = (400, 650)
