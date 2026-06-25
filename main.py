@@ -436,7 +436,8 @@ class AdminSettingsScreen(Screen):
             self.content_area = BoxLayout(orientation='vertical')
             layout.add_widget(self.content_area)
             
-            back_btn = Button(text=f('بازگشت'), size_hint_y=0.07, background_color=(0.5, 0.5, 0.5, 1), size_hint_y=None, height=dp(45))
+            # ====== اصلاح شده ======
+            back_btn = Button(text=f('بازگشت'), background_color=(0.5, 0.5, 0.5, 1), size_hint_y=None, height=dp(45))
             back_btn.bind(on_press=self.go_back)
             layout.add_widget(back_btn)
             
