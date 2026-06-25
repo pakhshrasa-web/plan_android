@@ -752,7 +752,7 @@ class AdminScreen(Screen):
             self.content_area = BoxLayout(orientation='vertical')
             main_layout.add_widget(self.content_area)
             
-            logout_btn = Button(text=f('خروج'), size_hint_y=0.07, background_color=(0.8, 0.2, 0.2, 1), size_hint_y=None, height=dp(45))
+            logout_btn = Button(text=f('خروج'), background_color=(0.8, 0.2, 0.2, 1), size_hint_y=None, height=dp(45))
             logout_btn.bind(on_press=self.logout)
             main_layout.add_widget(logout_btn)
             
