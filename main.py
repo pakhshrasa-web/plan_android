@@ -166,32 +166,19 @@ def get_app_root():
     else:
         return os.getcwd()
 
-# ========== مدیریت مسیرها و فونت ===========#
-import os
-from kivy.config import Config
-from kivy.core.text import LabelBase
-from kivy.utils import platform
-from kivy.core.window import Window
-
 def setup_font():
     """تنظیم فونت فارسی - استفاده از مسیر مستقیم فونت سیستمی"""
-    # مسیر فونت سیستمی اندروید
     font_path = '/system/fonts/NotoNaskhArabic-Regular.ttf'
     
     if os.path.exists(font_path):
         try:
-            # 1. ثبت فونت با نام PersianFont
             LabelBase.register(name='PersianFont', fn_regular=font_path)
-            
-            # 2. تنظیم فونت پیش‌فرض Kivy با مسیر مستقیم
             Config.set('kivy', 'default_font', [font_path, 'Roboto'])
-            
             print(f"✅ فونت با مسیر مستقیم تنظیم شد: {font_path}")
             return True
         except Exception as e:
             print(f"⚠️ خطا در تنظیم فونت: {e}")
     
-    # اگر فونت سیستمی نبود، از Roboto استفاده کن
     Config.set('kivy', 'default_font', ['Roboto'])
     print("⚠️ فونت فارسی پیدا نشد، استفاده از Roboto")
     return False
