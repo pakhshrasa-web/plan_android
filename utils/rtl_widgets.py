@@ -10,25 +10,16 @@ from kivy.metrics import dp
 
 # ========== تنظیم فونت ==========
 def get_available_font():
-    """پیدا کردن اولین فونت فارسی موجود"""
-    # اولویت با PersianFont که در main.py ثبت شده
-    font_options = [
-        'PersianFont',      # اولویت اول
-        'Vazirmatn',        # اولویت دوم
-        'CustomFont',       # اولویت سوم
-        'NotoSansArabic',   # اولویت چهارم
-        'Roboto'            # آخرین گزینه
-    ]
+    """پیدا کردن فونت فارسی موجود"""
+    font_options = ['PersianFont', 'Vazirmatn', 'CustomFont', 'Roboto']
     
     for font in font_options:
         if font in LabelBase._fonts:
-            print(f"✅ فونت انتخاب شده در ویجت‌ها: {font}")
+            print(f"✅ فونت انتخاب شده: {font}")
             return font
     
-    print("⚠️ فونت فارسی در ویجت‌ها پیدا نشد، استفاده از Roboto")
     return 'Roboto'
 
-# انتخاب فونت
 FONT_NAME = get_available_font()
 
 
@@ -36,16 +27,17 @@ class RTLTextInput(TextInput):
     """TextInput با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        # تنظیمات پیش‌فرض - استفاده از FONT_NAME
+        # تنظیمات پیش‌فرض
         kwargs.setdefault('font_name', FONT_NAME)
         kwargs.setdefault('halign', 'right')
         kwargs.setdefault('padding', (dp(10), dp(10), dp(10), dp(10)))
         kwargs.setdefault('write_tab', False)
         kwargs.setdefault('multiline', False)
+        kwargs.setdefault('focus', True)  # مهم برای تاچ
         
         super().__init__(**kwargs)
         
-        # اتصال رویداد
+        # رویدادها
         self.bind(text=self._on_text_change)
         self.bind(focus=self._on_focus)
     
@@ -57,9 +49,12 @@ class RTLTextInput(TextInput):
             self.halign = 'left'
     
     def _on_focus(self, instance, value):
-        """وقتی فیلد فعال می‌شود"""
-        if value and self.text:
-            if self._is_rtl_text(self.text):
+        """وقتی فیلد فوکوس می‌شود"""
+        if value:
+            # نمایش کیبورد
+            self.show_keyboard()
+            # مکان‌نما آخر متن
+            if self.text:
                 self.cursor = (len(self.text), 0)
     
     def _is_rtl_text(self, text):
@@ -67,7 +62,7 @@ class RTLTextInput(TextInput):
         if not text:
             return False
         
-        rtl_chars = sum(1 for c in text if '\u0600' <= c <= '\u06FF' or '\uFB50' <= c <= '\uFDFF')
+        rtl_chars = sum(1 for c in text if '\u0600' <= c <= '\u06FF')
         ltr_chars = sum(1 for c in text if c.isalpha() and not ('\u0600' <= c <= '\u06FF'))
         
         if rtl_chars == 0 and ltr_chars == 0:
@@ -98,7 +93,6 @@ class RTLLabel(Label):
         self.bind(text=self._update_alignment)
     
     def _update_alignment(self, instance, value):
-        """به‌روزرسانی alignment بر اساس متن"""
         if value and is_rtl_text(value):
             self.halign = 'right'
         else:
