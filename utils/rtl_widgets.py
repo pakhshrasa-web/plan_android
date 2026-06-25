@@ -2,52 +2,65 @@
 ویجت‌های RTL برای پشتیبانی از متن فارسی
 """
 
+import os
 from kivy.uix.textinput import TextInput
 from kivy.uix.spinner import Spinner
 from kivy.uix.label import Label
+from kivy.core.text import LabelBase
 from kivy.metrics import dp
 from kivy.clock import Clock
 from kivy.core.window import Window
 
-# ========== کتابخانه‌های RTL ==========
+# ========== تنظیم فونت ==========
+def get_font_path():
+    """پیدا کردن مسیر فونت - اولویت با فونت داخلی"""
+    # 1. فونت داخلی برنامه (Vazirmatn)
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    internal_fonts = [
+        os.path.join(base_dir, 'fonts', 'Vazirmatn-Regular.ttf'),
+        os.path.join(base_dir, 'fonts', 'Vazirmatn.ttf'),
+        os.path.join(base_dir, 'Vazirmatn-Regular.ttf'),
+    ]
+    
+    for path in internal_fonts:
+        if os.path.exists(path):
+            print(f"✅ فونت داخلی پیدا شد: {path}")
+            return path
+    
+    # 2. فونت سیستمی (در صورت نبود فونت داخلی)
+    system_fonts = [
+        '/system/fonts/NotoNaskhArabic-Regular.ttf',
+        '/system/fonts/NotoSansArabic-Regular.ttf',
+        '/system/fonts/DroidSansFallback.ttf',
+    ]
+    
+    for path in system_fonts:
+        if os.path.exists(path):
+            print(f"✅ فونت سیستمی پیدا شد: {path}")
+            return path
+    
+    print("⚠️ هیچ فونتی پیدا نشد، استفاده از Roboto")
+    return 'Roboto'
+
+# پیدا کردن فونت
+FONT_PATH = get_font_path()
+print(f"📁 فونت استفاده شده: {FONT_PATH}")
+
+# ثبت فونت در LabelBase برای استفاده در ویجت‌ها
 try:
-    import arabic_reshaper
-    from bidi.algorithm import get_display
-    HAS_RTL_LIBS = True
-    print("✅ کتابخانه‌های RTL بارگذاری شدند")
-except ImportError:
-    HAS_RTL_LIBS = False
-    print("⚠️ کتابخانه‌های RTL در دسترس نیستند")
-
-# مسیر فونت (اگر وجود داشت)
-FONT_PATH = '/system/fonts/NotoNaskhArabic-Regular.ttf'
-FALLBACK_FONT = 'Roboto'
-
-def get_font():
-    """پیدا کردن فونت مناسب"""
-    if os.path.exists(FONT_PATH):
-        return FONT_PATH
-    return FALLBACK_FONT
-
-
-def reshape_arabic(text):
-    """شکل‌دهی متن فارسی/عربی"""
-    if not text or not HAS_RTL_LIBS:
-        return text
-    try:
-        reshaped = arabic_reshaper.reshape(text)
-        bidi_text = get_display(reshaped)
-        return bidi_text
-    except:
-        return text
+    if FONT_PATH != 'Roboto' and os.path.exists(FONT_PATH):
+        LabelBase.register(name='CustomFont', fn_regular=FONT_PATH)
+        print(f"✅ فونت با نام CustomFont ثبت شد")
+except Exception as e:
+    print(f"⚠️ خطا در ثبت فونت: {e}")
 
 
 class RTLTextInput(TextInput):
     """TextInput با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        # تنظیمات
-        kwargs['font_name'] = get_font()
+        # استفاده از فونت ثبت شده
+        kwargs['font_name'] = 'CustomFont' if FONT_PATH != 'Roboto' else 'Roboto'
         kwargs['halign'] = 'right'
         kwargs['padding'] = (dp(15), dp(12), dp(15), dp(12))
         kwargs['write_tab'] = False
@@ -57,21 +70,17 @@ class RTLTextInput(TextInput):
         
         super().__init__(**kwargs)
         
-        # رویدادها
         self.bind(focus=self._on_focus)
         self.bind(text=self._on_text_change)
-        
         self._keyboard = None
     
     def on_touch_down(self, touch):
-        """دریافت تاچ برای فوکوس"""
         if self.collide_point(*touch.pos):
             self.focus = True
             return True
         return super().on_touch_down(touch)
     
     def _on_focus(self, instance, value):
-        """هنگام فوکوس"""
         if value:
             Clock.schedule_once(lambda dt: self._show_keyboard(), 0.1)
             if self.text:
@@ -83,7 +92,6 @@ class RTLTextInput(TextInput):
             self._hide_keyboard()
     
     def _show_keyboard(self):
-        """نمایش کیبورد"""
         if self.focus:
             try:
                 self._keyboard = Window.request_keyboard(
@@ -97,7 +105,6 @@ class RTLTextInput(TextInput):
                 print(f"⚠️ خطا در نمایش کیبورد: {e}")
     
     def _hide_keyboard(self):
-        """پنهان کردن کیبورد"""
         if self._keyboard:
             self._keyboard.unbind(on_key_down=self._on_key_down)
             self._keyboard = None
@@ -107,7 +114,6 @@ class RTLTextInput(TextInput):
                 pass
     
     def _on_key_down(self, keyboard, keycode, text, modifiers):
-        """پردازش کلیدها"""
         key_name = keycode[1]
         
         if key_name == 'enter' and not self.multiline:
@@ -120,7 +126,6 @@ class RTLTextInput(TextInput):
             return True
         
         if text:
-            # اضافه کردن متن با شکل‌دهی
             cursor_pos = self.cursor[0]
             old_text = self.text
             new_text = old_text[:cursor_pos] + text + old_text[cursor_pos:]
@@ -131,18 +136,15 @@ class RTLTextInput(TextInput):
         return False
     
     def _keyboard_closed(self):
-        """بسته شدن کیبورد"""
         self._keyboard = None
     
     def _on_text_change(self, instance, value):
-        """تنظیم جهت متن"""
         if value and self._is_rtl_text(value):
             self.halign = 'right'
         else:
             self.halign = 'left'
     
     def _is_rtl_text(self, text):
-        """تشخیص RTL بودن متن"""
         if not text:
             return False
         rtl_chars = sum(1 for c in text if '\u0600' <= c <= '\u06FF')
@@ -156,7 +158,7 @@ class RTLSpinner(Spinner):
     """Spinner با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        kwargs['font_name'] = get_font()
+        kwargs['font_name'] = 'CustomFont' if FONT_PATH != 'Roboto' else 'Roboto'
         kwargs['halign'] = 'right'
         kwargs['text_autoupdate'] = True
         kwargs['size_hint_y'] = None
@@ -168,7 +170,7 @@ class RTLLabel(Label):
     """Label با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        kwargs['font_name'] = get_font()
+        kwargs['font_name'] = 'CustomFont' if FONT_PATH != 'Roboto' else 'Roboto'
         kwargs['halign'] = 'right'
         kwargs['valign'] = 'middle'
         super().__init__(**kwargs)
@@ -183,7 +185,6 @@ class RTLLabel(Label):
 
 
 def is_rtl_text(text):
-    """تشخیص RTL بودن متن"""
     if not text:
         return False
     text = str(text)
@@ -195,7 +196,6 @@ def is_rtl_text(text):
 
 
 def auto_align_textinput(textinput):
-    """تنظیم خودکار alignment بر اساس متن"""
     if textinput.text and is_rtl_text(textinput.text):
         textinput.halign = 'right'
         textinput.padding = (15, 12, 15, 12)
