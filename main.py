@@ -166,11 +166,13 @@ def get_app_root():
     else:
         return os.getcwd()
 
-# ========== تنظیم فونت ==========
+# ===
+# ========== مدیریت مسیرها و فونت ==========
 import os
 from kivy.config import Config
 from kivy.core.text import LabelBase
 from kivy.utils import platform
+from kivy.core.window import Window  # اضافه شد
 
 def setup_font():
     """تنظیم فونت فارسی"""
@@ -178,15 +180,16 @@ def setup_font():
     
     if os.path.exists(font_path):
         try:
-            # فقط ثبت کن، Config.set رو حذف کن
             LabelBase.register(name='PersianFont', fn_regular=font_path)
             print(f"✅ فونت ثبت شد: {font_path}")
             return True
         except Exception as e:
-            print(f"⚠️ خطا: {e}")
+            print(f"⚠️ خطا در ثبت فونت: {e}")
     
+    print("⚠️ فونت فارسی پیدا نشد")
     return False
 
+# اجرای تنظیم فونت
 setup_font()
 
 if platform != 'android':
