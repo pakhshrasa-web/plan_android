@@ -12,7 +12,6 @@ from kivy.clock import Clock
 # ========== تنظیم فونت ==========
 def get_best_font():
     """پیدا کردن بهترین فونت موجود"""
-    # اولویت با فونت‌های فارسی
     font_options = ['PersianFont', 'CustomFont', 'Vazirmatn', 'Roboto']
     
     for font in font_options:
@@ -25,26 +24,27 @@ def get_best_font():
 
 FONT_NAME = get_best_font()
 
+
 class RTLTextInput(TextInput):
     """TextInput با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        # استفاده از مسیر مستقیم فونت سیستمی
+        # مسیر مستقیم فونت سیستمی
         font_path = '/system/fonts/NotoNaskhArabic-Regular.ttf'
         
-        kwargs['font_name'] = font_path  # مسیر مستقیم
+        # فقط propertyهای معتبر
+        kwargs['font_name'] = font_path
         kwargs['halign'] = 'right'
         kwargs['padding'] = (dp(15), dp(10), dp(15), dp(10))
         kwargs['write_tab'] = False
         kwargs['multiline'] = False
         
-        # تنظیمات کیبورد
-        kwargs['input_type'] = 'text'
-        kwargs['keyboard_type'] = 'text'
+        # فقط input_type معتبر است
+        if 'input_type' not in kwargs:
+            kwargs['input_type'] = 'text'
         
         super().__init__(**kwargs)
         
-        # رویدادها
         self.bind(text=self._on_text_change)
         self.bind(focus=self._on_focus)
     
@@ -52,7 +52,6 @@ class RTLTextInput(TextInput):
         """دریافت تاچ برای فوکوس"""
         if self.collide_point(*touch.pos):
             print(f"✅ تاچ روی فیلد: {touch.pos}")
-            # فوکوس و نمایش کیبورد
             self.focus = True
             Clock.schedule_once(lambda dt: self.show_keyboard(), 0.1)
             return True
@@ -62,11 +61,7 @@ class RTLTextInput(TextInput):
         """هنگام فوکوس - نمایش کیبورد"""
         if value:
             print("✅ فیلد فوکوس شد")
-            # نمایش کیبورد با دو روش
             Clock.schedule_once(lambda dt: self.show_keyboard(), 0.1)
-            Clock.schedule_once(lambda dt: self.focus, 0.2)
-            
-            # مکان‌نما در انتهای متن
             if self.text:
                 Clock.schedule_once(lambda dt: setattr(self, 'cursor', (len(self.text), 0)), 0.1)
     
