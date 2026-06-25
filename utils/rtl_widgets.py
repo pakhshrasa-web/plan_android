@@ -7,17 +7,17 @@ from kivy.uix.spinner import Spinner
 from kivy.uix.label import Label
 from kivy.core.text import LabelBase
 from kivy.metrics import dp
-import os
 
 # ========== تنظیم فونت ==========
 def get_available_font():
     """پیدا کردن اولین فونت فارسی موجود"""
+    # اولویت با PersianFont که در main.py ثبت شده
     font_options = [
-        'PersianFont',
-        'Vazirmatn', 
-        'CustomFont',
-        'NotoSansArabic',
-        'Roboto'
+        'PersianFont',      # اولویت اول
+        'Vazirmatn',        # اولویت دوم
+        'CustomFont',       # اولویت سوم
+        'NotoSansArabic',   # اولویت چهارم
+        'Roboto'            # آخرین گزینه
     ]
     
     for font in font_options:
@@ -25,10 +25,10 @@ def get_available_font():
             print(f"✅ فونت انتخاب شده در ویجت‌ها: {font}")
             return font
     
-    # اگر هیچکدام نبود، از Roboto استفاده کن
     print("⚠️ فونت فارسی در ویجت‌ها پیدا نشد، استفاده از Roboto")
     return 'Roboto'
 
+# انتخاب فونت
 FONT_NAME = get_available_font()
 
 
@@ -36,7 +36,7 @@ class RTLTextInput(TextInput):
     """TextInput با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        # تنظیمات پیش‌فرض
+        # تنظیمات پیش‌فرض - استفاده از FONT_NAME
         kwargs.setdefault('font_name', FONT_NAME)
         kwargs.setdefault('halign', 'right')
         kwargs.setdefault('padding', (dp(10), dp(10), dp(10), dp(10)))
@@ -59,7 +59,6 @@ class RTLTextInput(TextInput):
     def _on_focus(self, instance, value):
         """وقتی فیلد فعال می‌شود"""
         if value and self.text:
-            # اگر متن فارسی بود، مکان‌نما را آخر متن قرار بده
             if self._is_rtl_text(self.text):
                 self.cursor = (len(self.text), 0)
     
@@ -68,7 +67,6 @@ class RTLTextInput(TextInput):
         if not text:
             return False
         
-        # کاراکترهای فارسی و عربی
         rtl_chars = sum(1 for c in text if '\u0600' <= c <= '\u06FF' or '\uFB50' <= c <= '\uFDFF')
         ltr_chars = sum(1 for c in text if c.isalpha() and not ('\u0600' <= c <= '\u06FF'))
         
@@ -97,7 +95,6 @@ class RTLLabel(Label):
         kwargs.setdefault('valign', 'middle')
         super().__init__(**kwargs)
         
-        # اگر متن فارسی بود، به‌روزرسانی کن
         self.bind(text=self._update_alignment)
     
     def _update_alignment(self, instance, value):
