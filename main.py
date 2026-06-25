@@ -97,11 +97,11 @@ class ErrorPopup:
             btn_layout.add_widget(close_btn)
             content.add_widget(btn_layout)
             
-            popup = Popup(title='[b]گزارش خطا[/b]', 
+            # ====== اصلاح: حذف markup=True ======
+            popup = Popup(title='⚠️ گزارش خطا', 
                           content=content, 
                           size_hint=(0.92, 0.75),
-                          auto_dismiss=False,
-                          markup=True)
+                          auto_dismiss=False)
             
             def copy_error(instance):
                 full_text = f"خطا: {error_message}\n\nجزئیات:\n{error_details}"
