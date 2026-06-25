@@ -30,19 +30,18 @@ FONT_PATH = '/system/fonts/NotoNaskhArabic-Regular.ttf'
 class RTLTextInput(TextInput):
     """
     TextInput با پشتیبانی از RTL و فونت فارسی
-    - استفاده از مسیر مستقیم فونت سیستمی
-    - پشتیبانی از تاچ و کیبورد در اندروید
     """
     
     def __init__(self, **kwargs):
         # تنظیمات اجباری
-        kwargs['font_name'] = FONT_PATH  # استفاده از مسیر مستقیم فونت
+        kwargs['font_name'] = FONT_PATH
         kwargs['halign'] = 'right'
         kwargs['padding'] = (dp(15), dp(12), dp(15), dp(12))
         kwargs['write_tab'] = False
         kwargs['multiline'] = False
         kwargs['size_hint_y'] = None
         kwargs['height'] = dp(50)
+        kwargs['input_type'] = 'text'
         
         super().__init__(**kwargs)
         
@@ -50,33 +49,52 @@ class RTLTextInput(TextInput):
         self.bind(focus=self._on_focus)
         self.bind(text=self._on_text_change)
         
-        # متغیر برای کیبورد
+        # متغیر کیبورد
         self._keyboard = None
     
     def on_touch_down(self, touch):
-        """دریافت تاچ برای فوکوس و نمایش کیبورد"""
+        """دریافت تاچ برای فوکوس"""
         if self.collide_point(*touch.pos):
             print(f"✅ تاچ روی فیلد: {touch.pos}")
-            # فوکوس را تنظیم کن
+            # فوکوس رو تنظیم کن
             self.focus = True
-            # نمایش کیبورد با تأخیر
-            Clock.schedule_once(lambda dt: self._show_keyboard(), 0.1)
             return True
         return super().on_touch_down(touch)
     
+    def _on_focus(self, instance, value):
+        """هنگام فوکوس - نمایش کیبورد"""
+        if value:
+            print("✅ فیلد فوکوس شد")
+            # نمایش کیبورد با تأخیر
+            Clock.schedule_once(lambda dt: self._show_keyboard(), 0.1)
+            # مکان‌نما در انتهای متن
+            if self.text:
+                Clock.schedule_once(
+                    lambda dt: setattr(self, 'cursor', (len(self.text), 0)), 
+                    0.15
+                )
+        else:
+            # وقتی فوکوس از دست می‌رود
+            self._hide_keyboard()
+    
     def _show_keyboard(self):
-        """نمایش کیبورد با استفاده از Window.request_keyboard"""
+        """نمایش کیبورد و اتصال به فیلد"""
         if self.focus:
             try:
-                # روش مطمئن‌تر برای نمایش کیبورد در اندروید
+                # درخواست کیبورد با callback
                 self._keyboard = Window.request_keyboard(
-                    self._keyboard_closed, 
-                    self, 
-                    'text'
+                    self._keyboard_closed,  # وقتی بسته شد
+                    self,                    # widget مالک
+                    'text'                   # نوع ورودی
                 )
+                
+                # اتصال کیبورد به فیلد برای دریافت متن
                 if self._keyboard:
+                    # این خط مهم است - اتصال کیبورد به فیلد
                     self._keyboard.bind(on_key_down=self._on_key_down)
-                    print("✅ کیبورد با موفقیت نمایش داده شد")
+                    self._keyboard.bind(on_key_up=self._on_key_up)
+                    print("✅ کیبورد متصل شد")
+                    
             except Exception as e:
                 print(f"⚠️ خطا در نمایش کیبورد: {e}")
                 # روش جایگزین
@@ -85,29 +103,60 @@ class RTLTextInput(TextInput):
                 except:
                     pass
     
-    def _on_focus(self, instance, value):
-        """هنگام فوکوس - نمایش کیبورد"""
-        if value:
-            print("✅ فیلد فوکوس شد")
-            Clock.schedule_once(lambda dt: self._show_keyboard(), 0.1)
-            # مکان‌نما در انتهای متن
-            if self.text:
-                Clock.schedule_once(
-                    lambda dt: setattr(self, 'cursor', (len(self.text), 0)), 
-                    0.1
-                )
-        else:
-            # وقتی فوکوس از دست می‌رود
-            if self._keyboard:
-                self._keyboard.unbind(on_key_down=self._on_key_down)
-                self._keyboard = None
+    def _hide_keyboard(self):
+        """پنهان کردن کیبورد"""
+        if self._keyboard:
+            self._keyboard.unbind(on_key_down=self._on_key_down)
+            self._keyboard.unbind(on_key_up=self._on_key_up)
+            self._keyboard = None
+            # بستن کیبورد
+            try:
+                Window.release_all_keyboards()
+            except:
+                pass
     
     def _on_key_down(self, keyboard, keycode, text, modifiers):
-        """دریافت رویدادهای کیبورد"""
-        if keycode[1] == 'enter':
+        """وقتی کلیدی فشار داده می‌شود - نوشتن متن در فیلد"""
+        # keycode[1] نام کلید است
+        key_name = keycode[1]
+        
+        # اگر کلید Enter باشد
+        if key_name == 'enter':
             if not self.multiline:
                 self.focus = False
-        return True
+                return True
+        
+        # اگر کلید Backspace باشد
+        elif key_name == 'backspace':
+            # حذف کاراکتر آخر
+            if self.text:
+                self.text = self.text[:-1]
+            return True
+        
+        # اگر کلید Delete باشد
+        elif key_name == 'del':
+            # حذف کاراکتر بعد از مکان‌نما
+            pass
+        
+        # اگر متن وجود داشته باشد (کاراکتر معمولی)
+        elif text:
+            # وارد کردن متن در فیلد
+            cursor_pos = self.cursor[0]
+            old_text = self.text
+            new_text = old_text[:cursor_pos] + text + old_text[cursor_pos:]
+            self.text = new_text
+            # حرکت مکان‌نما
+            self.cursor = (cursor_pos + len(text), 0)
+            
+            # نمایش متن برای دیباگ
+            print(f"✏️ نوشته شد: {text}")
+            return True
+        
+        return False
+    
+    def _on_key_up(self, keyboard, keycode):
+        """وقتی کلید رها می‌شود"""
+        pass
     
     def _keyboard_closed(self):
         """وقتی کیبورد بسته می‌شود"""
@@ -139,7 +188,7 @@ class RTLSpinner(Spinner):
     """Spinner با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        kwargs['font_name'] = FONT_PATH  # استفاده از مسیر مستقیم
+        kwargs['font_name'] = FONT_PATH
         kwargs['halign'] = 'right'
         kwargs['text_autoupdate'] = True
         kwargs['size_hint_y'] = None
@@ -151,7 +200,7 @@ class RTLLabel(Label):
     """Label با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        kwargs['font_name'] = FONT_PATH  # استفاده از مسیر مستقیم
+        kwargs['font_name'] = FONT_PATH
         kwargs['halign'] = 'right'
         kwargs['valign'] = 'middle'
         super().__init__(**kwargs)
