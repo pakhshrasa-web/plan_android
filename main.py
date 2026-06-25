@@ -21,7 +21,7 @@ from kivy.uix.popup import Popup
 from kivy.graphics import Color, Rectangle
 from kivy.utils import platform
 from kivy.clock import Clock
-from kivy.metrics import dp, sp  # ← اضافه کردن dp و sp
+from kivy.metrics import dp, sp
 
 # ========== هندلر خطا ==========
 def exception_handler(exc_type, exc_value, exc_tb):
@@ -215,7 +215,7 @@ try:
     from utils.auth import get_admin_password, set_admin_password, verify_password
     from utils.excel_importer import import_routes_from_excel, import_customers_from_excel
     from utils.excel_exporter import export_to_excel
-    # from utils.pdf_exporter import export_to_pdf  # ← کامنت شد
+    # from utils.pdf_exporter import export_to_pdf  # کامنت شد
     from utils.file_picker import FilePicker
 except Exception as e:
     error_details = traceback.format_exc()
@@ -436,7 +436,6 @@ class AdminSettingsScreen(Screen):
             self.content_area = BoxLayout(orientation='vertical')
             layout.add_widget(self.content_area)
             
-            # ====== اصلاح شده ======
             back_btn = Button(text=f('بازگشت'), background_color=(0.5, 0.5, 0.5, 1), size_hint_y=None, height=dp(45))
             back_btn.bind(on_press=self.go_back)
             layout.add_widget(back_btn)
@@ -956,7 +955,7 @@ class AdminScreen(Screen):
             self.routes_file_picker = FilePicker(size_hint_y=None, height=dp(100))
             layout.add_widget(self.routes_file_picker)
             
-            import_btn = Button(text=f('ورود به سیستم'), size_hint_y=0.1, background_color=(0.2, 0.7, 0.2, 1), size_hint_y=None, height=dp(50))
+            import_btn = Button(text=f('ورود به سیستم'), background_color=(0.2, 0.7, 0.2, 1), size_hint_y=None, height=dp(50))
             import_btn.bind(on_press=self.import_routes_from_excel)
             layout.add_widget(import_btn)
             
@@ -1139,7 +1138,7 @@ class AdminScreen(Screen):
             self.customers_file_picker = FilePicker(size_hint_y=None, height=dp(100))
             layout.add_widget(self.customers_file_picker)
             
-            import_btn = Button(text=f('ورود به سیستم'), size_hint_y=0.1, background_color=(0.2, 0.7, 0.2, 1), size_hint_y=None, height=dp(50))
+            import_btn = Button(text=f('ورود به سیستم'), background_color=(0.2, 0.7, 0.2, 1), size_hint_y=None, height=dp(50))
             import_btn.bind(on_press=self.import_customers_from_excel)
             layout.add_widget(import_btn)
             
