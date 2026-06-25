@@ -215,7 +215,7 @@ try:
     from utils.auth import get_admin_password, set_admin_password, verify_password
     from utils.excel_importer import import_routes_from_excel, import_customers_from_excel
     from utils.excel_exporter import export_to_excel
-    from utils.pdf_exporter import export_to_pdf
+    # from utils.pdf_exporter import export_to_pdf  # ← کامنت شد
     from utils.file_picker import FilePicker
 except Exception as e:
     error_details = traceback.format_exc()
@@ -1715,15 +1715,7 @@ class ReportScreen(Screen):
             ErrorPopup.show_error(f"خطا در خروجی Excel: {e}", error_details)
     
     def export_pdf(self, instance):
-        try:
-            filepath = export_to_pdf()
-            if filepath:
-                self.show_message('موفق', 'فایل PDF ذخیره شد')
-            else:
-                self.show_message('خطا', 'هیچ داده‌ای وجود ندارد')
-        except Exception as e:
-            error_details = traceback.format_exc()
-            ErrorPopup.show_error(f"خطا در خروجی PDF: {e}", error_details)
+        self.show_message('توجه', 'قابلیت خروجی PDF در این نسخه موقتاً غیرفعال است')
     
     def go_back(self, instance):
         self.manager.current = 'user'
