@@ -58,6 +58,10 @@ def exception_handler(exc_type, exc_value, exc_tb):
 
 sys.excepthook = exception_handler
 
+# ========== تنظیمات مدیر ==========
+ADMIN_EMAIL = "pakhshrasa@gmail.com"
+DEFAULT_ADMIN_PASSWORD = "admin123"  # رمز پیش‌فرض
+
 # ========== سیستم نمایش خطا ==========
 class ErrorPopup:
     """نمایش خطا به صورت پنجره بازشو با قابلیت کپی متن"""
@@ -1748,22 +1752,57 @@ class SettingsLoginScreen(Screen):
         try:
             layout = BoxLayout(orientation='vertical', spacing=dp(20), padding=dp(40))
             
-            title = Label(text=f('ورود به تنظیمات سیستم'), font_size=sp(24), size_hint_y=0.2)
+            title = Label(text=f('ورود به تنظیمات سیستم'), font_size=sp(24), size_hint_y=0.15)
             layout.add_widget(title)
             
-            self.password_input = RTLTextInput(hint_text='رمز عبور مدیر', password=True, multiline=False, size_hint_y=None, height=dp(55))
+            # نمایش ایمیل مدیر
+            email_info = Label(
+                text=f'[size=14][color=666666]ایمیل مدیر: {ADMIN_EMAIL}[/color][/size]',
+                markup=True,
+                size_hint_y=0.1
+            )
+            layout.add_widget(email_info)
+            
+            self.password_input = RTLTextInput(
+                hint_text='رمز عبور مدیر',
+                password=True,
+                multiline=False,
+                size_hint_y=None,
+                height=dp(55)
+            )
             layout.add_widget(self.password_input)
             
             btn_layout = BoxLayout(spacing=dp(10), size_hint_y=None, height=dp(55))
-            login_btn = Button(text=f('ورود'), background_color=(0.2, 0.6, 1, 1), size_hint_y=None, height=dp(50))
+            login_btn = Button(
+                text=f('ورود'),
+                background_color=(0.2, 0.6, 1, 1),
+                size_hint_y=None,
+                height=dp(50)
+            )
             login_btn.bind(on_press=self.check_login)
             btn_layout.add_widget(login_btn)
             
-            back_btn = Button(text=f('بازگشت'), background_color=(0.5, 0.5, 0.5, 1), size_hint_y=None, height=dp(50))
+            back_btn = Button(
+                text=f('بازگشت'),
+                background_color=(0.5, 0.5, 0.5, 1),
+                size_hint_y=None,
+                height=dp(50)
+            )
             back_btn.bind(on_press=self.go_back)
             btn_layout.add_widget(back_btn)
             
             layout.add_widget(btn_layout)
+            
+            # دکمه فراموشی رمز
+            forgot_btn = Button(
+                text=f('🔑 رمز را فراموش کرده‌ام'),
+                size_hint_y=None,
+                height=dp(40),
+                background_color=(0.8, 0.5, 0.2, 0.8)
+            )
+            forgot_btn.bind(on_press=self.forgot_password)
+            layout.add_widget(forgot_btn)
+            
             self.add_widget(layout)
         except Exception as e:
             error_details = traceback.format_exc()
@@ -1781,6 +1820,40 @@ class SettingsLoginScreen(Screen):
         except Exception as e:
             error_details = traceback.format_exc()
             ErrorPopup.show_error(f"خطا در ورود به تنظیمات: {e}", error_details)
+    
+    def forgot_password(self, instance):
+        """بازیابی رمز عبور از طریق ایمیل"""
+        try:
+            # در اندروید، ایمیل را با intent باز می‌کنیم
+            from plyer import email
+            email.send(
+                recipient=ADMIN_EMAIL,
+                subject='درخواست بازیابی رمز عبور مدیر',
+                text=f'''
+سلام مدیر گرامی
+
+درخواست بازیابی رمز عبور پنل مدیریت از طرف شما ثبت شده است.
+
+رمز عبور پیش‌فرض شما: {DEFAULT_ADMIN_PASSWORD}
+
+لطفاً پس از ورود، رمز عبور خود را تغییر دهید.
+
+با احترام
+سیستم مدیریت فروش
+                '''
+            )
+            self.show_message(
+                'موفق',
+                f'ایمیل بازیابی رمز به {ADMIN_EMAIL} ارسال شد.\n'
+                f'رمز پیش‌فرض: {DEFAULT_ADMIN_PASSWORD}'
+            )
+        except Exception as e:
+            # اگر plyer کار نکرد، رمز را مستقیماً نمایش بده
+            self.show_message(
+                '🔑 بازیابی رمز',
+                f'رمز پیش‌فرض مدیر: {DEFAULT_ADMIN_PASSWORD}\n'
+                f'لطفاً پس از ورود، رمز را تغییر دهید.'
+            )
     
     def go_back(self, instance):
         self.manager.current = 'login'
@@ -1859,6 +1932,11 @@ class MainApp(App):
     
     def init_json_files(self):
         try:
+            from utils.auth import hash_password
+            
+            # هش کردن رمز پیش‌فرض
+            hashed_default = hash_password(DEFAULT_ADMIN_PASSWORD)
+            
             default_data = {
                 'definitions.json': {
                     'agents': [],
@@ -1884,7 +1962,7 @@ class MainApp(App):
                 'daily_log.json': {},
                 'users.json': {'users': []},
                 'codes.json': {'codes': []},
-                'admin_password.json': {'hashed_password': ''}
+                'admin_password.json': {'hashed_password': hashed_default}  # رمز پیش‌فرض
             }
             
             from utils.storage import get_data_path
