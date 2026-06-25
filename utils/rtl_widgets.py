@@ -25,17 +25,22 @@ def get_best_font():
 
 FONT_NAME = get_best_font()
 
-
 class RTLTextInput(TextInput):
     """TextInput با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        # تنظیمات اجباری - استفاده مستقیم از فونت
-        kwargs['font_name'] = FONT_NAME
+        # استفاده از مسیر مستقیم فونت سیستمی
+        font_path = '/system/fonts/NotoNaskhArabic-Regular.ttf'
+        
+        kwargs['font_name'] = font_path  # مسیر مستقیم
         kwargs['halign'] = 'right'
-        kwargs['padding'] = (dp(10), dp(10), dp(10), dp(10))
+        kwargs['padding'] = (dp(15), dp(10), dp(15), dp(10))
         kwargs['write_tab'] = False
         kwargs['multiline'] = False
+        
+        # تنظیمات کیبورد
+        kwargs['input_type'] = 'text'
+        kwargs['keyboard_type'] = 'text'
         
         super().__init__(**kwargs)
         
@@ -43,20 +48,27 @@ class RTLTextInput(TextInput):
         self.bind(text=self._on_text_change)
         self.bind(focus=self._on_focus)
     
-    def _on_focus(self, instance, value):
-        """هنگام فوکوس - نمایش کیبورد"""
-        if value:
-            # نمایش کیبورد با تأخیر
-            Clock.schedule_once(lambda dt: self.show_keyboard(), 0.1)
-            if self.text:
-                Clock.schedule_once(lambda dt: setattr(self, 'cursor', (len(self.text), 0)), 0.1)
-    
     def on_touch_down(self, touch):
         """دریافت تاچ برای فوکوس"""
         if self.collide_point(*touch.pos):
+            print(f"✅ تاچ روی فیلد: {touch.pos}")
+            # فوکوس و نمایش کیبورد
             self.focus = True
+            Clock.schedule_once(lambda dt: self.show_keyboard(), 0.1)
             return True
         return super().on_touch_down(touch)
+    
+    def _on_focus(self, instance, value):
+        """هنگام فوکوس - نمایش کیبورد"""
+        if value:
+            print("✅ فیلد فوکوس شد")
+            # نمایش کیبورد با دو روش
+            Clock.schedule_once(lambda dt: self.show_keyboard(), 0.1)
+            Clock.schedule_once(lambda dt: self.focus, 0.2)
+            
+            # مکان‌نما در انتهای متن
+            if self.text:
+                Clock.schedule_once(lambda dt: setattr(self, 'cursor', (len(self.text), 0)), 0.1)
     
     def _on_text_change(self, instance, value):
         """تنظیم جهت متن"""
