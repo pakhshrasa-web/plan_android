@@ -167,25 +167,62 @@ def get_app_root():
         return os.getcwd()
 
 def get_font_path():
-    possible_paths = [
+    possible_paths = []
+    
+    # 1. اولویت با فونت‌های سیستمی اندروید
+    if platform == 'android':
+        system_fonts = [
+            '/system/fonts/NotoSansArabic-Regular.ttf',
+            '/system/fonts/NotoNaskhArabic-Regular.ttf',
+            '/system/fonts/NotoSansArabicUI-Regular.ttf',
+            '/system/fonts/DroidNaskh-Regular.ttf',
+            '/system/fonts/DroidSansFallback.ttf',
+        ]
+        possible_paths.extend(system_fonts)
+    
+    # 2. سپس فونت‌های داخلی برنامه
+    app_fonts = [
         os.path.join(os.path.dirname(__file__), 'fonts', 'Vazirmatn-Regular.ttf'),
         os.path.join(os.path.dirname(__file__), 'fonts', 'Vazirmatn.ttf'),
         os.path.join(os.path.dirname(__file__), 'Vazirmatn-Regular.ttf'),
         os.path.join(os.path.dirname(__file__), 'Vazirmatn.ttf'),
-        os.path.join('/system/fonts/', 'Vazirmatn-Regular.ttf'),
-        os.path.join('/system/fonts/', 'Vazirmatn.ttf'),
     ]
+    possible_paths.extend(app_fonts)
+    
+    # 3. نهایتاً فونت‌های سیستمی عمومی
+    if platform == 'android':
+        possible_paths.extend([
+            '/system/fonts/NotoSansCJK-Regular.ttc',
+            '/system/fonts/DroidSans.ttf',
+        ])
+    
     for path in possible_paths:
         if os.path.exists(path):
+            print(f"✅ فونت پیدا شد: {path}")
             return path
+    
+    print("⚠️ هیچ فونت فارسی پیدا نشد")
     return None
 
 font_path = get_font_path()
+
+# ثبت فونت با نام‌های مختلف
 if font_path:
     try:
+        # ثبت با نام‌های مختلف برای دسترسی آسان‌تر
         LabelBase.register(name='Vazirmatn', fn_regular=font_path)
-        Config.set('kivy', 'default_font', ['Vazirmatn'])
+        LabelBase.register(name='CustomFont', fn_regular=font_path)
+        LabelBase.register(name='Persian', fn_regular=font_path)
+        
+        # تنظیم فونت پیش‌فرض با اولویت‌بندی
+        Config.set('kivy', 'default_font', ['CustomFont', 'Vazirmatn', 'Persian', 'Roboto'])
         print(f"✅ فونت با موفقیت از مسیر {font_path} بارگذاری شد")
+        
+        # نمایش لیست فونت‌ها برای دیباگ
+        print("📋 لیست فونت‌های بارگذاری شده:")
+        for name in LabelBase._fonts.keys():
+            print(f"  - {name}")
+            
     except Exception as e:
         print(f"⚠️ خطا در بارگذاری فونت: {e}")
         if platform == 'android':
