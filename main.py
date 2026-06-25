@@ -1788,7 +1788,6 @@ class ReportScreen(Screen):
             error_details = traceback.format_exc()
             ErrorPopup.show_error(f"خطا در نمایش پیام: {e}", error_details)
 
-
 class SettingsLoginScreen(Screen):
     def __init__(self, **kwargs):
         try:
@@ -1806,11 +1805,12 @@ class SettingsLoginScreen(Screen):
             title = Label(text=f('ورود به تنظیمات سیستم'), font_size=sp(24), size_hint_y=0.15)
             layout.add_widget(title)
             
-            # نمایش ایمیل مدیر
+            # نمایش ایمیل مدیر و رمز پیش‌فرض
+            info_text = f'[size=14][color=666666]ایمیل مدیر: {ADMIN_EMAIL}\nرمز پیش‌فرض: admin123[/color][/size]'
             email_info = Label(
-                text=f'[size=14][color=666666]ایمیل مدیر: {ADMIN_EMAIL}[/color][/size]',
+                text=info_text,
                 markup=True,
-                size_hint_y=0.1
+                size_hint_y=0.15
             )
             layout.add_widget(email_info)
             
@@ -1844,15 +1844,15 @@ class SettingsLoginScreen(Screen):
             
             layout.add_widget(btn_layout)
             
-            # دکمه فراموشی رمز
-            forgot_btn = Button(
-                text=f('🔑 رمز را فراموش کرده‌ام'),
+            # دکمه تنظیم مجدد رمز
+            reset_btn = Button(
+                text=f('🔄 تنظیم مجدد رمز (admin123)'),
                 size_hint_y=None,
                 height=dp(40),
                 background_color=(0.8, 0.5, 0.2, 0.8)
             )
-            forgot_btn.bind(on_press=self.forgot_password)
-            layout.add_widget(forgot_btn)
+            reset_btn.bind(on_press=self.reset_password)
+            layout.add_widget(reset_btn)
             
             self.add_widget(layout)
         except Exception as e:
@@ -1860,14 +1860,34 @@ class SettingsLoginScreen(Screen):
             ErrorPopup.show_error(f"خطا در ساخت UI SettingsLoginScreen: {e}", error_details)
             raise
     
+    def reset_password(self, instance):
+        """تنظیم مجدد رمز به admin123"""
+        try:
+            from utils.auth import hash_password
+            set_admin_password('admin123')
+            self.show_message('موفق', 'رمز با موفقیت به "admin123" تنظیم شد')
+            self.password_input.text = ''
+        except Exception as e:
+            self.show_message('خطا', f'خطا در تنظیم رمز: {e}')
+    
     def check_login(self, instance):
         try:
             hashed = get_admin_password()
-            if hashed and verify_password(self.password_input.text, hashed):
+            
+            # اگر رمز وجود نداشت یا خالی بود، رمز پیش‌فرض رو تنظیم کن
+            if not hashed:
+                from utils.auth import hash_password
+                set_admin_password('admin123')
+                hashed = get_admin_password()
+                self.show_message('توجه', 'رمز پیش‌فرض "admin123" تنظیم شد')
+            
+            # بررسی رمز
+            if verify_password(self.password_input.text, hashed):
                 self.manager.current = 'admin_settings'
             else:
                 self.show_message('خطا', 'رمز عبور اشتباه است')
                 self.password_input.text = ''
+                
         except Exception as e:
             error_details = traceback.format_exc()
             ErrorPopup.show_error(f"خطا در ورود به تنظیمات: {e}", error_details)
@@ -1875,7 +1895,6 @@ class SettingsLoginScreen(Screen):
     def forgot_password(self, instance):
         """بازیابی رمز عبور از طریق ایمیل"""
         try:
-            # در اندروید، ایمیل را با intent باز می‌کنیم
             from plyer import email
             email.send(
                 recipient=ADMIN_EMAIL,
@@ -1885,7 +1904,7 @@ class SettingsLoginScreen(Screen):
 
 درخواست بازیابی رمز عبور پنل مدیریت از طرف شما ثبت شده است.
 
-رمز عبور پیش‌فرض شما: {DEFAULT_ADMIN_PASSWORD}
+رمز عبور پیش‌فرض شما: admin123
 
 لطفاً پس از ورود، رمز عبور خود را تغییر دهید.
 
@@ -1895,15 +1914,12 @@ class SettingsLoginScreen(Screen):
             )
             self.show_message(
                 'موفق',
-                f'ایمیل بازیابی رمز به {ADMIN_EMAIL} ارسال شد.\n'
-                f'رمز پیش‌فرض: {DEFAULT_ADMIN_PASSWORD}'
+                f'ایمیل بازیابی رمز به {ADMIN_EMAIL} ارسال شد.\nرمز پیش‌فرض: admin123'
             )
         except Exception as e:
-            # اگر plyer کار نکرد، رمز را مستقیماً نمایش بده
             self.show_message(
                 '🔑 بازیابی رمز',
-                f'رمز پیش‌فرض مدیر: {DEFAULT_ADMIN_PASSWORD}\n'
-                f'لطفاً پس از ورود، رمز را تغییر دهید.'
+                f'رمز پیش‌فرض مدیر: admin123\nلطفاً پس از ورود، رمز را تغییر دهید.'
             )
     
     def go_back(self, instance):
