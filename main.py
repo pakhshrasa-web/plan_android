@@ -167,6 +167,7 @@ def get_app_root():
     else:
         return os.getcwd()
 
+# ========== مدیریت مسیرها و فونت ==========
 def get_font_path():
     possible_paths = [
         os.path.join(os.path.dirname(__file__), 'fonts', 'Vazirmatn-Regular.ttf'),
@@ -189,9 +190,17 @@ if font_path:
         print(f"✅ فونت با موفقیت از مسیر {font_path} بارگذاری شد")
     except Exception as e:
         print(f"⚠️ خطا در بارگذاری فونت: {e}")
+        # اگر فونت ثبت نشد، از فونت پیشفرض اندروید استفاده کن
+        if platform == 'android':
+            Config.set('kivy', 'default_font', ['Roboto'])
+        else:
+            Config.set('kivy', 'default_font', ['Arial'])
 else:
     print("ℹ️ فونت فارسی یافت نشد، استفاده از فونت پیش‌فرض")
-    Config.set('kivy', 'default_font', ['Arial'])
+    if platform == 'android':
+        Config.set('kivy', 'default_font', ['Roboto'])
+    else:
+        Config.set('kivy', 'default_font', ['Arial'])
 
 if platform != 'android':
     Window.size = (400, 650)
