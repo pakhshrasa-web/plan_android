@@ -7,33 +7,35 @@ from kivy.uix.spinner import Spinner
 from kivy.uix.label import Label
 from kivy.core.text import LabelBase
 from kivy.metrics import dp
+from kivy.clock import Clock
 
 # ========== تنظیم فونت ==========
-def get_available_font():
-    """پیدا کردن فونت فارسی موجود"""
-    font_options = ['PersianFont', 'Vazirmatn', 'CustomFont', 'Roboto']
+def get_best_font():
+    """پیدا کردن بهترین فونت موجود"""
+    # اولویت با فونت‌های فارسی
+    font_options = ['PersianFont', 'CustomFont', 'Vazirmatn', 'Roboto']
     
     for font in font_options:
         if font in LabelBase._fonts:
-            print(f"✅ فونت انتخاب شده: {font}")
+            print(f"✅ فونت انتخاب شده برای ویجت‌ها: {font}")
             return font
     
+    print("⚠️ فونت فارسی پیدا نشد، استفاده از Roboto")
     return 'Roboto'
 
-FONT_NAME = get_available_font()
+FONT_NAME = get_best_font()
 
 
 class RTLTextInput(TextInput):
     """TextInput با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        # تنظیمات پیش‌فرض
-        kwargs.setdefault('font_name', FONT_NAME)
-        kwargs.setdefault('halign', 'right')
-        kwargs.setdefault('padding', (dp(10), dp(10), dp(10), dp(10)))
-        kwargs.setdefault('write_tab', False)
-        kwargs.setdefault('multiline', False)
-        kwargs.setdefault('focus', True)  # مهم برای تاچ
+        # تنظیمات اجباری - استفاده مستقیم از فونت
+        kwargs['font_name'] = FONT_NAME
+        kwargs['halign'] = 'right'
+        kwargs['padding'] = (dp(10), dp(10), dp(10), dp(10))
+        kwargs['write_tab'] = False
+        kwargs['multiline'] = False
         
         super().__init__(**kwargs)
         
@@ -41,21 +43,27 @@ class RTLTextInput(TextInput):
         self.bind(text=self._on_text_change)
         self.bind(focus=self._on_focus)
     
+    def _on_focus(self, instance, value):
+        """هنگام فوکوس - نمایش کیبورد"""
+        if value:
+            # نمایش کیبورد با تأخیر
+            Clock.schedule_once(lambda dt: self.show_keyboard(), 0.1)
+            if self.text:
+                Clock.schedule_once(lambda dt: setattr(self, 'cursor', (len(self.text), 0)), 0.1)
+    
+    def on_touch_down(self, touch):
+        """دریافت تاچ برای فوکوس"""
+        if self.collide_point(*touch.pos):
+            self.focus = True
+            return True
+        return super().on_touch_down(touch)
+    
     def _on_text_change(self, instance, value):
-        """تنظیم خودکار جهت متن"""
+        """تنظیم جهت متن"""
         if value and self._is_rtl_text(value):
             self.halign = 'right'
         else:
             self.halign = 'left'
-    
-    def _on_focus(self, instance, value):
-        """وقتی فیلد فوکوس می‌شود"""
-        if value:
-            # نمایش کیبورد
-            self.show_keyboard()
-            # مکان‌نما آخر متن
-            if self.text:
-                self.cursor = (len(self.text), 0)
     
     def _is_rtl_text(self, text):
         """تشخیص RTL بودن متن"""
@@ -75,9 +83,9 @@ class RTLSpinner(Spinner):
     """Spinner با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        kwargs.setdefault('font_name', FONT_NAME)
-        kwargs.setdefault('halign', 'right')
-        kwargs.setdefault('text_autoupdate', True)
+        kwargs['font_name'] = FONT_NAME
+        kwargs['halign'] = 'right'
+        kwargs['text_autoupdate'] = True
         super().__init__(**kwargs)
 
 
@@ -85,9 +93,9 @@ class RTLLabel(Label):
     """Label با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        kwargs.setdefault('font_name', FONT_NAME)
-        kwargs.setdefault('halign', 'right')
-        kwargs.setdefault('valign', 'middle')
+        kwargs['font_name'] = FONT_NAME
+        kwargs['halign'] = 'right'
+        kwargs['valign'] = 'middle'
         super().__init__(**kwargs)
         
         self.bind(text=self._update_alignment)
