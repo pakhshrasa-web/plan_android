@@ -198,9 +198,9 @@ if platform != 'android':
 
 # ========== ایمپورت ماژول‌های برنامه ==========
 try:
-    from utils.rtl import RTLTextInput, RTLSpinner
+    from utils.rtl_widgets import RTLTextInput, RTLSpinner  # ← اصلاح ۱
     from utils.text_helper import f
-    from utils.storage import get_data_path, init_data_path
+    from utils.storage import get_data_path, init_data_path  # ← اصلاح ۲
     from utils.file_manager import (
         get_agents, add_agent, delete_agent,
         get_routes, add_route, delete_route,
