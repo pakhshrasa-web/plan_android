@@ -1874,6 +1874,48 @@ class SettingsLoginScreen(Screen):
             error_details = traceback.format_exc()
             ErrorPopup.show_error(f"خطا در نمایش پیام: {e}", error_details)
 
+# یک صفحه دیباگ ساده در main.py اضافه کن
+class DebugScreen(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        layout = BoxLayout(orientation='vertical', padding=dp(20))
+        
+        # 1. بررسی وجود فونت در سیستم
+        font_paths = [
+            '/system/fonts/NotoNaskhArabic-Regular.ttf',
+            '/system/fonts/NotoSansArabic-Regular.ttf',
+            '/system/fonts/DroidSansFallback.ttf',
+        ]
+        
+        for path in font_paths:
+            exists = os.path.exists(path)
+            layout.add_widget(Label(text=f"{path}: {'✅' if exists else '❌'}"))
+        
+        # 2. بررسی فونت داخلی برنامه
+        internal_paths = [
+            os.path.join(os.path.dirname(__file__), 'fonts', 'Vazirmatn-Regular.ttf'),
+            os.path.join(os.path.dirname(__file__), 'Vazirmatn-Regular.ttf'),
+        ]
+        
+        for path in internal_paths:
+            exists = os.path.exists(path)
+            layout.add_widget(Label(text=f"{path}: {'✅' if exists else '❌'}"))
+        
+        # 3. بررسی فونت‌های ثبت شده در Kivy
+        layout.add_widget(Label(text="📋 فونت‌های ثبت شده:"))
+        for name in LabelBase._fonts.keys():
+            layout.add_widget(Label(text=f"  - {name}"))
+        
+        # 4. تست نمایش فارسی
+        layout.add_widget(Label(text="تست فارسی با Roboto", font_name='Roboto'))
+        layout.add_widget(Label(text="تست فارسی با CustomFont", font_name='CustomFont'))
+        
+        back_btn = Button(text='بازگشت', size_hint_y=None, height=dp(50))
+        back_btn.bind(on_press=lambda x: setattr(self.manager, 'current', 'login'))
+        layout.add_widget(back_btn)
+        
+        self.add_widget(layout)
+
 
 class ScreenManagement(ScreenManager):
     pass
