@@ -4,7 +4,6 @@
 - استفاده از Pillow برای نمایش متن فارسی (بدون arabic_reshaper)
 """
 
-import os
 from kivy.uix.textinput import TextInput
 from kivy.uix.spinner import Spinner
 from kivy.uix.label import Label
@@ -129,7 +128,7 @@ class RTLSpinner(Spinner):
 
 class RTLLabel(BoxLayout):
     """
-    ✅ نسخه نهایی RTLLabel - بدون وابستگی به arabic_reshaper
+    ✅ نسخه RTLLabel - بدون وابستگی به arabic_reshaper
     - از Pillow برای نمایش متن فارسی استفاده می‌کند
     """
     
@@ -203,9 +202,15 @@ class RTLLabel(BoxLayout):
                 height=self._font_size + dp(20),
                 text_size=(self.width, None)
             )
+            # برای اینکه halign/valign درست کار کند
+            self._label_widget.bind(size=self._update_text_size)
         
         if self._label_widget:
             self.add_widget(self._label_widget)
+    
+    def _update_text_size(self, instance, value):
+        """به‌روزرسانی text_size برای Label معمولی"""
+        instance.text_size = (instance.width, None)
     
     def set_text(self, text):
         self._text = text
