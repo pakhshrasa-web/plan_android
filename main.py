@@ -167,56 +167,85 @@ def get_app_root():
         return os.getcwd()
 
 def setup_font():
-    """تنظیم فونت فارسی - استفاده از فونت‌های داخلی برنامه"""
-    
-    # لیست فونت‌های داخلی به ترتیب اولویت
+    """تنظیم فونت فارسی + دیباگ کامل"""
+
+    print("\n" + "=" * 60)
+    print("شروع بررسی فونت")
+    print("=" * 60)
+
+    print("Current Working Directory:")
+    print(os.getcwd())
+
+    print("\nRoot files:")
+    try:
+        print(os.listdir("."))
+    except Exception as e:
+        print("خطا:", e)
+
+    print("\nFonts directory:")
+    try:
+        print(os.listdir("fonts"))
+    except Exception as e:
+        print("خطا:", e)
+
+    print("=" * 60)
+
     font_paths = [
-        # فونت‌های داخل پوشه fonts/ (مسیر نسبی)
-        'fonts/Amiri-Regular.ttf',
-        'fonts/Lateef-Regular.ttf',
-        'fonts/NotoNasrArabic-Regular.ttf',
-        'fonts/Vazirmatn-Regular.ttf',
-        
-        # مسیرهای مطلق (برای اطمینان بیشتر)
-        os.path.join(os.path.dirname(__file__), 'fonts', 'Amiri-Regular.ttf'),
-        os.path.join(os.path.dirname(__file__), 'fonts', 'Lateef-Regular.ttf'),
-        os.path.join(os.path.dirname(__file__), 'fonts', 'NotoNasrArabic-Regular.ttf'),
-        os.path.join(os.path.dirname(__file__), 'fonts', 'Vazirmatn-Regular.ttf'),
+        "fonts/Amiri-Regular.ttf",
+        "fonts/Lateef-Regular.ttf",
+        "fonts/NotoNasrArabic-Regular.ttf",
+        "fonts/Vazirmatn-Regular.ttf",
+
+        os.path.join(os.path.dirname(__file__), "fonts", "Amiri-Regular.ttf"),
+        os.path.join(os.path.dirname(__file__), "fonts", "Lateef-Regular.ttf"),
+        os.path.join(os.path.dirname(__file__), "fonts", "NotoNasrArabic-Regular.ttf"),
+        os.path.join(os.path.dirname(__file__), "fonts", "Vazirmatn-Regular.ttf"),
     ]
-    
+
     font_path = None
+
+    print("\nبررسی مسیرهای فونت:\n")
+
     for path in font_paths:
-        if os.path.exists(path):
+        exists = os.path.exists(path)
+        print(f"{path}   --->   {exists}")
+
+        if exists:
             font_path = path
-            print(f"✅ فونت داخلی پیدا شد: {path}")
             break
-    
-    # اگر فونت داخلی پیدا نشد، از فونت سیستمی استفاده کن
-    if font_path is None:
-        system_paths = [
-            '/system/fonts/NotoNaskhArabic-Regular.ttf',
-            '/system/fonts/NotoSansArabic-Regular.ttf',
-            '/system/fonts/DroidNaskh-Regular.ttf',
-            '/system/fonts/DroidSansFallback.ttf',
-        ]
-        for path in system_paths:
-            if os.path.exists(path):
-                font_path = path
-                print(f"✅ فونت سیستمی پیدا شد: {path}")
-                break
-    
-    if font_path and os.path.exists(font_path):
+
+    if font_path:
+
+        print("\n✅ فونت انتخاب شد:")
+        print(font_path)
+
         try:
-            LabelBase.register(name='PersianFont', fn_regular=font_path)
-            Config.set('kivy', 'default_font', [font_path, 'Roboto'])
-            print(f"✅ فونت با موفقیت تنظیم شد: {font_path}")
+            LabelBase.register(
+                name="PersianFont",
+                fn_regular=font_path
+            )
+
+            Config.set(
+                "kivy",
+                "default_font",
+                [font_path, "Roboto"]
+            )
+
+            print("✅ فونت با موفقیت ثبت شد.")
+
             return True
+
         except Exception as e:
-            print(f"⚠️ خطا در تنظیم فونت: {e}")
-    
-    # اگر هیچ فونتی پیدا نشد
-    Config.set('kivy', 'default_font', ['Roboto'])
-    print("⚠️ هیچ فونت فارسی پیدا نشد، استفاده از Roboto")
+
+            print("❌ خطا در ثبت فونت:")
+            print(e)
+
+    else:
+
+        print("\n❌ هیچ فونتی پیدا نشد.")
+
+    Config.set("kivy", "default_font", ["Roboto"])
+
     return False
 
 # اجرای تنظیم فونت
