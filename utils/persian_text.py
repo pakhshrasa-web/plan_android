@@ -1,69 +1,81 @@
-"""
-ابزارهای نمایش متن فارسی با استفاده از Pillow
-"""
-
+# utils/persian_text.py
 from kivy.uix.image import Image
-from kivy.core.image import Image as CoreImage
-from io import BytesIO
+from kivy.core.image import Texture
 from PIL import Image as PILImage, ImageDraw, ImageFont
+import io
 import os
+import arabic_reshaper
+from bidi.algorithm import get_display
 
-# پیدا کردن بهترین فونت برای PIL
-def get_pil_font(font_size=24):
-    font_paths = [
-        '/system/fonts/NotoNaskhArabic-Regular.ttf',
-        '/system/fonts/DroidSansFallback.ttf',
-        '/system/fonts/NotoSansArabic-Regular.ttf',
-    ]
+class PersianLabel(Image):
+    def __init__(self, text="", font_size=24, color=(0, 0, 0, 255), **kwargs):
+        super().__init__(**kwargs)
+        self.text = text
+        self.font_size = font_size
+        self.color = color
+        self._update_texture()
     
-    for path in font_paths:
-        if os.path.exists(path):
-            try:
-                return ImageFont.truetype(path, font_size)
-            except:
-                continue
-    
-    return ImageFont.load_default()
-
-
-def create_persian_label(text, font_size=24, color=(0, 0, 0, 255), bg_color=(255, 255, 255, 0)):
-    """ایجاد Image widget با متن فارسی"""
-    try:
-        font = get_pil_font(font_size)
+    def _update_texture(self):
+        if not self.text:
+            return
         
-        # اندازه‌گیری متن
-        bbox = font.getbbox(text)
-        width = bbox[2] - bbox[0] + 20
-        height = bbox[3] - bbox[1] + 20
+        # 1. شکل‌دهی به متن فارسی
+        reshaped_text = arabic_reshaper.reshape(self.text)
+        bidi_text = get_display(reshaped_text)
         
-        # ایجاد تصویر
-        img = PILImage.new('RGBA', (width, height), bg_color)
-        draw = ImageDraw.Draw(img)
-        draw.text((10, 10), text, font=font, fill=color)
+        # 2. پیدا کردن فونت
+        font_path = self._find_font()
         
-        # تبدیل به BytesIO
-        buffer = BytesIO()
-        img.save(buffer, format='png')
-        buffer.seek(0)
+        # 3. ایجاد تصویر با PIL
+        try:
+            # ایجاد تصویر موقت برای اندازه‌گیری
+            temp_img = PILImage.new('RGBA', (1, 1), (255, 255, 255, 0))
+            temp_draw = ImageDraw.Draw(temp_img)
+            
+            if font_path:
+                font = ImageFont.truetype(font_path, self.font_size)
+            else:
+                font = ImageFont.load_default()
+            
+            # اندازه‌گیری متن
+            bbox = temp_draw.textbbox((0, 0), bidi_text, font=font)
+            width = bbox[2] - bbox[0] + 20
+            height = bbox[3] - bbox[1] + 20
+            
+            # ایجاد تصویر نهایی
+            img = PILImage.new('RGBA', (width, height), (255, 255, 255, 0))
+            draw = ImageDraw.Draw(img)
+            
+            # رسم متن
+            draw.text((10, 10), bidi_text, font=font, fill=self.color)
+            
+            # تبدیل به Texture کیوی
+            data = io.BytesIO()
+            img.save(data, format='png')
+            data.seek(0)
+            
+            texture = Texture.create(size=(width, height), colorfmt='rgba')
+            texture.blit_buffer(data.getvalue(), colorfmt='rgba', bufferfmt='ubyte')
+            self.texture = texture
+            self.size = (width, height)
+            
+        except Exception as e:
+            print(f"❌ خطا در ایجاد متن فارسی: {e}")
+    
+    def _find_font(self):
+        # لیست مسیرهای احتمالی فونت
+        font_paths = [
+            '/system/fonts/NotoNaskhArabic-Regular.ttf',
+            '/system/fonts/NotoSansArabic-Regular.ttf',
+            '/system/fonts/DroidNaskh-Regular.ttf',
+            'fonts/Vazirmatn-Regular.ttf'
+        ]
         
-        # ایجاد Image widget
-        return Image(texture=CoreImage(buffer, ext='png').texture)
+        for path in font_paths:
+            if os.path.exists(path):
+                return path
+        return None
     
-    except Exception as e:
-        print(f"⚠️ خطا در ایجاد متن فارسی: {e}")
-        from kivy.uix.label import Label
-        return Label(text=text)
-
-
-def create_persian_button(text, font_size=20, color=(1, 1, 1, 1), bg_color=(0.2, 0.6, 0.2, 1)):
-    """ایجاد دکمه با متن فارسی"""
-    from kivy.uix.button import Button
-    
-    # ایجاد تصویر با رنگ پس‌زمینه
-    img = create_persian_label(text, font_size, color, bg_color)
-    
-    # قرار دادن تصویر در دکمه
-    btn = Button()
-    btn.add_widget(img)
-    
-    return btn
+    def set_text(self, text):
+        self.text = text
+        self._update_texture()
