@@ -6,40 +6,31 @@ import os
 from kivy.uix.textinput import TextInput
 from kivy.uix.spinner import Spinner
 from kivy.uix.label import Label
-from kivy.core.text import LabelBase
 from kivy.metrics import dp
 from kivy.clock import Clock
 from kivy.core.window import Window
-from kivy.utils import platform
 
-# ========== پیدا کردن مسیر فونت ==========
+# ========== تنظیم فونت ==========
+# مسیر مستقیم فونت در اندروید
+# این مسیر از لاگ بدست آمده: /data/data/org.pakhshrasa.planandroid/files/app/fonts/Vazirmatn-Regular.ttf
+
 def get_font_path():
-    """پیدا کردن مسیر فونت - مخصوص اندروید"""
+    """پیدا کردن مسیر فونت"""
+    # 1. فونت داخلی برنامه (در اندروید)
+    app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    internal_fonts = [
+        os.path.join(app_dir, 'fonts', 'Vazirmatn-Regular.ttf'),
+        os.path.join(app_dir, 'fonts', 'Vazirmatn.ttf'),
+    ]
     
-    # 1. در اندروید، از مسیر app استفاده کن
-    if platform == 'android':
-        # مسیر فایل‌های برنامه در اندروید
-        app_dir = os.path.dirname(os.path.abspath(__file__))
-        # رفتن به ریشه پروژه
-        while not os.path.exists(os.path.join(app_dir, 'fonts')):
-            app_dir = os.path.dirname(app_dir)
-            if app_dir == '/':
-                break
-        
-        internal_fonts = [
-            os.path.join(app_dir, 'fonts', 'Vazirmatn-Regular.ttf'),
-            os.path.join(app_dir, 'fonts', 'Vazirmatn.ttf'),
-        ]
-        
-        for path in internal_fonts:
-            if os.path.exists(path):
-                print(f"✅ فونت داخلی پیدا شد: {path}")
-                return path
+    for path in internal_fonts:
+        if os.path.exists(path):
+            print(f"✅ فونت داخلی پیدا شد: {path}")
+            return path
     
     # 2. فونت سیستمی (در صورت نبود فونت داخلی)
     system_fonts = [
         '/system/fonts/NotoNaskhArabic-Regular.ttf',
-        '/system/fonts/NotoSansArabic-Regular.ttf',
         '/system/fonts/DroidSansFallback.ttf',
     ]
     
@@ -48,33 +39,23 @@ def get_font_path():
             print(f"✅ فونت سیستمی پیدا شد: {path}")
             return path
     
-    print("⚠️ هیچ فونتی پیدا نشد، استفاده از Roboto")
     return 'Roboto'
 
 # پیدا کردن فونت
 FONT_PATH = get_font_path()
 print(f"📁 فونت استفاده شده: {FONT_PATH}")
 
-# ثبت فونت در LabelBase
-try:
-    if FONT_PATH != 'Roboto' and os.path.exists(FONT_PATH):
-        LabelBase.register(name='CustomFont', fn_regular=FONT_PATH)
-        print(f"✅ فونت با نام CustomFont ثبت شد")
-    else:
-        # اگر فونت فارسی نبود، از Roboto استفاده کن
-        print("ℹ️ استفاده از فونت پیش‌فرض Roboto")
-except Exception as e:
-    print(f"⚠️ خطا در ثبت فونت: {e}")
-
 
 class RTLTextInput(TextInput):
     """TextInput با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        # استفاده از فونت ثبت شده یا Roboto
-        font_to_use = 'CustomFont' if FONT_PATH != 'Roboto' else 'Roboto'
+        # استفاده از مسیر مستقیم فونت
+        if FONT_PATH != 'Roboto':
+            kwargs['font_name'] = FONT_PATH  # مسیر مستقیم
+        else:
+            kwargs['font_name'] = 'Roboto'
         
-        kwargs['font_name'] = font_to_use
         kwargs['halign'] = 'right'
         kwargs['padding'] = (dp(15), dp(12), dp(15), dp(12))
         kwargs['write_tab'] = False
@@ -172,8 +153,10 @@ class RTLSpinner(Spinner):
     """Spinner با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        font_to_use = 'CustomFont' if FONT_PATH != 'Roboto' else 'Roboto'
-        kwargs['font_name'] = font_to_use
+        if FONT_PATH != 'Roboto':
+            kwargs['font_name'] = FONT_PATH
+        else:
+            kwargs['font_name'] = 'Roboto'
         kwargs['halign'] = 'right'
         kwargs['text_autoupdate'] = True
         kwargs['size_hint_y'] = None
@@ -185,8 +168,10 @@ class RTLLabel(Label):
     """Label با پشتیبانی از RTL و فونت فارسی"""
     
     def __init__(self, **kwargs):
-        font_to_use = 'CustomFont' if FONT_PATH != 'Roboto' else 'Roboto'
-        kwargs['font_name'] = font_to_use
+        if FONT_PATH != 'Roboto':
+            kwargs['font_name'] = FONT_PATH
+        else:
+            kwargs['font_name'] = 'Roboto'
         kwargs['halign'] = 'right'
         kwargs['valign'] = 'middle'
         super().__init__(**kwargs)
