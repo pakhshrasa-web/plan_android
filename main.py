@@ -167,20 +167,56 @@ def get_app_root():
         return os.getcwd()
 
 def setup_font():
-    """تنظیم فونت فارسی - استفاده از مسیر مستقیم فونت سیستمی"""
-    font_path = '/system/fonts/NotoNaskhArabic-Regular.ttf'
+    """تنظیم فونت فارسی - استفاده از فونت‌های داخلی برنامه"""
     
-    if os.path.exists(font_path):
+    # لیست فونت‌های داخلی به ترتیب اولویت
+    font_paths = [
+        # فونت‌های داخل پوشه fonts/ (مسیر نسبی)
+        'fonts/Amiri-Regular.ttf',
+        'fonts/Lateef-Regular.ttf',
+        'fonts/NotoNasrArabic-Regular.ttf',
+        'fonts/Vazirmatn-Regular.ttf',
+        
+        # مسیرهای مطلق (برای اطمینان بیشتر)
+        os.path.join(os.path.dirname(__file__), 'fonts', 'Amiri-Regular.ttf'),
+        os.path.join(os.path.dirname(__file__), 'fonts', 'Lateef-Regular.ttf'),
+        os.path.join(os.path.dirname(__file__), 'fonts', 'NotoNasrArabic-Regular.ttf'),
+        os.path.join(os.path.dirname(__file__), 'fonts', 'Vazirmatn-Regular.ttf'),
+    ]
+    
+    font_path = None
+    for path in font_paths:
+        if os.path.exists(path):
+            font_path = path
+            print(f"✅ فونت داخلی پیدا شد: {path}")
+            break
+    
+    # اگر فونت داخلی پیدا نشد، از فونت سیستمی استفاده کن
+    if font_path is None:
+        system_paths = [
+            '/system/fonts/NotoNaskhArabic-Regular.ttf',
+            '/system/fonts/NotoSansArabic-Regular.ttf',
+            '/system/fonts/DroidNaskh-Regular.ttf',
+            '/system/fonts/DroidSansFallback.ttf',
+        ]
+        for path in system_paths:
+            if os.path.exists(path):
+                font_path = path
+                print(f"✅ فونت سیستمی پیدا شد: {path}")
+                break
+    
+    if font_path and os.path.exists(font_path):
         try:
             LabelBase.register(name='PersianFont', fn_regular=font_path)
             Config.set('kivy', 'default_font', [font_path, 'Roboto'])
-            print(f"✅ فونت با مسیر مستقیم تنظیم شد: {font_path}")
+            print(f"✅ فونت با موفقیت تنظیم شد: {font_path}")
             return True
         except Exception as e:
             print(f"⚠️ خطا در تنظیم فونت: {e}")
     
+    # اگر هیچ فونتی پیدا نشد
     Config.set('kivy', 'default_font', ['Roboto'])
-    print("⚠️ فونت فارسی پیدا نشد، استفاده از Roboto")
+    print("⚠️ هیچ فونت فارسی پیدا نشد، استفاده از Roboto")
     return False
 
 # اجرای تنظیم فونت
