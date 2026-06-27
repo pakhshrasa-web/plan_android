@@ -1,16 +1,18 @@
+# utils/rtl_widgets.py
 """
 ویجت‌های RTL برای پشتیبانی از متن فارسی
-- استفاده از arabic_reshaper برای شکل‌دهی متن
+- استفاده از Pillow برای نمایش متن فارسی
+- پشتیبانی از کیبورد و ورودی
 """
 
 import os
 from kivy.uix.textinput import TextInput
 from kivy.uix.spinner import Spinner
 from kivy.uix.label import Label
+from kivy.uix.boxlayout import BoxLayout
 from kivy.metrics import dp
 from kivy.clock import Clock
 from kivy.core.window import Window
-from kivy.core.text import LabelBase
 
 # ========== کتابخانه‌های RTL ==========
 try:
@@ -22,31 +24,22 @@ except ImportError:
     HAS_RTL_LIBS = False
     print("⚠️ کتابخانه‌های RTL در دسترس نیستند")
 
-# ========== تنظیم فونت ==========
-# پیدا کردن فونت
-def get_font():
-    font_paths = [
-        '/system/fonts/DroidSansFallback.ttf',
-        '/system/fonts/NotoNaskhArabic-Regular.ttf',
-        '/system/fonts/NotoSansArabic-Regular.ttf',
-    ]
-    
-    for path in font_paths:
-        if os.path.exists(path):
-            return path
-    
-    return 'Roboto'
-
-FONT_PATH = get_font()
-print(f"📁 فونت استفاده شده: {FONT_PATH}")
+# ========== کتابخانه Pillow برای نمایش فارسی ==========
+try:
+    from utils.persian_text import PersianLabel, is_rtl_text, create_persian_label
+    HAS_PILLOW = True
+    print("✅ Pillow برای نمایش فارسی بارگذاری شد")
+except ImportError:
+    HAS_PILLOW = False
+    print("⚠️ Pillow در دسترس نیست - از روش جایگزین استفاده می‌شود")
 
 
 def reshape_text(text):
-    """شکل‌دهی متن فارسی/عربی"""
+    """شکل‌دهی متن فارسی/عربی (فقط برای fallback)"""
     if not text or not HAS_RTL_LIBS:
         return text
     try:
-        reshaped = arabic_reshaper.reshape(text)
+        reshaped = arabic_reshaper.reshape(str(text))
         bidi_text = get_display(reshaped)
         return bidi_text
     except:
@@ -57,7 +50,6 @@ class RTLTextInput(TextInput):
     """TextInput با پشتیبانی از RTL"""
     
     def __init__(self, **kwargs):
-        kwargs['font_name'] = FONT_PATH if FONT_PATH != 'Roboto' else 'Roboto'
         kwargs['halign'] = 'right'
         kwargs['padding'] = (dp(15), dp(12), dp(15), dp(12))
         kwargs['write_tab'] = False
@@ -68,8 +60,11 @@ class RTLTextInput(TextInput):
         super().__init__(**kwargs)
         
         self.bind(focus=self._on_focus)
-        self.bind(text=self._on_text_change)
         self._keyboard = None
+        
+        # اگر متن اولیه فارسی است، alignment رو تنظیم کن
+        if self.text and is_rtl_text(self.text):
+            self.halign = 'right'
     
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
@@ -135,27 +130,18 @@ class RTLTextInput(TextInput):
     def _keyboard_closed(self):
         self._keyboard = None
     
-    def _on_text_change(self, instance, value):
-        if value and self._is_rtl_text(value):
+    def insert_text(self, substring, from_undo=False):
+        """ورود متن با پشتیبانی از RTL"""
+        if is_rtl_text(substring):
+            # برای متن فارسی، direction رو تنظیم کن
             self.halign = 'right'
-        else:
-            self.halign = 'left'
-    
-    def _is_rtl_text(self, text):
-        if not text:
-            return False
-        rtl_chars = sum(1 for c in text if '\u0600' <= c <= '\u06FF')
-        ltr_chars = sum(1 for c in text if c.isalpha() and not ('\u0600' <= c <= '\u06FF'))
-        if rtl_chars == 0 and ltr_chars == 0:
-            return False
-        return rtl_chars > ltr_chars
+        return super().insert_text(substring, from_undo=from_undo)
 
 
 class RTLSpinner(Spinner):
     """Spinner با پشتیبانی از RTL"""
     
     def __init__(self, **kwargs):
-        kwargs['font_name'] = FONT_PATH if FONT_PATH != 'Roboto' else 'Roboto'
         kwargs['halign'] = 'right'
         kwargs['text_autoupdate'] = True
         kwargs['size_hint_y'] = None
@@ -163,66 +149,98 @@ class RTLSpinner(Spinner):
         super().__init__(**kwargs)
 
 
-class RTLLabel(Label):
-    """Label با پشتیبانی از RTL - استفاده از Pillow برای نمایش فارسی"""
+class RTLLabel(BoxLayout):
+    """
+    Label با پشتیبانی از RTL
+    - از Pillow برای نمایش متن فارسی استفاده می‌کند
+    - در صورت عدم دسترسی به Pillow، از reshape_text استفاده می‌کند
+    """
     
-    def __init__(self, **kwargs):
-        # ذخیره متن اصلی
-        self._original_text = kwargs.get('text', '')
-        self._font_size = kwargs.get('font_size', 24)
-        
-        # اگر متن فارسی است، از Pillow استفاده کن
-        if self._original_text and is_rtl_text(self._original_text):
-            try:
-                from utils.persian_text import create_persian_label
-                # جایگزینی Label با Image
-                img_label = create_persian_label(
-                    self._original_text,
-                    self._font_size
-                )
-                # حذف این Label و اضافه کردن Image
-                if kwargs.get('parent'):
-                    kwargs['parent'].remove_widget(self)
-                    kwargs['parent'].add_widget(img_label)
-                    return
-            except Exception as e:
-                print(f"⚠️ خطا در ایجاد متن فارسی: {e}")
-        
-        # اگر فارسی نبود یا خطا داشت، از Label معمولی استفاده کن
-        kwargs['font_name'] = FONT_PATH if FONT_PATH != 'Roboto' else 'Roboto'
-        kwargs['halign'] = 'right'
-        kwargs['valign'] = 'middle'
-        
+    def __init__(self, text="", font_size=24, color=(0, 0, 0, 1), **kwargs):
         super().__init__(**kwargs)
-        self.bind(text=self._on_text_set)
+        
+        self.size_hint = (1, None)
+        self.height = dp(50)
+        self.orientation = 'vertical'
+        
+        self._text = text
+        self._font_size = font_size
+        self._color = color
+        self._label_widget = None
+        
+        # ساخت ویجت نمایش متن
+        self._build_label()
     
-    def _on_text_set(self, instance, value):
-        """وقتی متن تغییر می‌کند"""
-        self._original_text = value
-        if value and is_rtl_text(value):
-            # برای تغییرات پویا، از روش جایگزینی استفاده کن
-            try:
-                from utils.persian_text import create_persian_label
-                # اینجا باید جایگزینی انجام شود
-                # ولی برای سادگی، فعلاً از reshape_text استفاده کن
-                self.text = reshape_text(value)
-            except:
-                self.text = value
+    def _build_label(self):
+        """ساخت ویجت مناسب برای نمایش متن"""
+        # پاک کردن ویجت قبلی
+        if self._label_widget:
+            self.remove_widget(self._label_widget)
+            self._label_widget = None
+        
+        # اگر متن فارسی است و Pillow موجود است
+        if self._text and is_rtl_text(self._text) and HAS_PILLOW:
+            # تبدیل رنگ از 0-1 به 0-255
+            color_rgb = tuple(int(c * 255) for c in self._color[:3])
+            if len(self._color) > 3:
+                color_rgb = color_rgb + (int(self._color[3] * 255),)
+            else:
+                color_rgb = color_rgb + (255,)
+            
+            self._label_widget = PersianLabel(
+                text=self._text,
+                font_size=self._font_size,
+                color=color_rgb,
+                size_hint=(1, None),
+                height=self._font_size + dp(20)
+            )
+            
         else:
-            self.text = value
+            # استفاده از Label معمولی
+            display_text = self._text
+            if self._text and is_rtl_text(self._text):
+                display_text = reshape_text(self._text)
+            
+            self._label_widget = Label(
+                text=display_text,
+                font_size=self._font_size,
+                color=self._color,
+                halign='center',
+                valign='middle',
+                size_hint=(1, None),
+                height=self._font_size + dp(20),
+                text_size=(self.width, None)
+            )
+        
+        # اضافه کردن ویجت
+        if self._label_widget:
+            self.add_widget(self._label_widget)
+    
+    def set_text(self, text):
+        """تغییر متن"""
+        self._text = text
+        self._build_label()
+    
+    def set_font_size(self, size):
+        """تغییر اندازه فونت"""
+        self._font_size = size
+        self._build_label()
+    
+    def set_color(self, color):
+        """تغییر رنگ"""
+        self._color = color
+        self._build_label()
+    
+    @property
+    def text(self):
+        return self._text
+    
+    @text.setter
+    def text(self, value):
+        self.set_text(str(value))
 
 
-def is_rtl_text(text):
-    """تشخیص RTL بودن متن"""
-    if not text:
-        return False
-    text = str(text)
-    rtl_chars = sum(1 for c in text if '\u0600' <= c <= '\u06FF')
-    ltr_chars = sum(1 for c in text if c.isalpha() and not ('\u0600' <= c <= '\u06FF'))
-    if rtl_chars == 0 and ltr_chars == 0:
-        return False
-    return rtl_chars > ltr_chars
-
+# ========== توابع کمکی ==========
 
 def auto_align_textinput(textinput):
     """تنظیم خودکار alignment بر اساس متن"""
@@ -232,3 +250,8 @@ def auto_align_textinput(textinput):
     else:
         textinput.halign = 'left'
         textinput.padding = (15, 12, 15, 12)
+
+
+def create_rtl_label(text, font_size=24, color=(0, 0, 0, 1)):
+    """ساخت RTLLabel با تنظیمات پیش‌فرض"""
+    return RTLLabel(text=text, font_size=font_size, color=color)
