@@ -75,7 +75,6 @@ class PersianLabel(Image):
             
         except Exception as e:
             print(f"❌ خطا در ایجاد متن فارسی: {e}")
-            # در صورت خطا، متن ساده نمایش داده شود
             self.texture = None
     
     def _find_font(self):
@@ -86,22 +85,11 @@ class PersianLabel(Image):
             '/system/fonts/DroidNaskh-Regular.ttf',
             '/system/fonts/DroidSansFallback.ttf',
             'fonts/Vazirmatn-Regular.ttf',
-            'fonts/NotoNaskhArabic-Regular.ttf'
         ]
         
         for path in font_paths:
             if os.path.exists(path):
                 return path
-        
-        # اگر فونت فارسی پیدا نشد، فونت سیستمی رو امتحان کن
-        try:
-            import kivy.resources
-            for path in kivy.resources.resource_find('fonts/*.ttf') or []:
-                if os.path.exists(path):
-                    return path
-        except:
-            pass
-        
         return None
     
     def set_text(self, text):
