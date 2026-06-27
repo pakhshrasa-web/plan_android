@@ -164,7 +164,11 @@ class RTLSpinner(Spinner):
 
 
 class RTLLabel(Label):
-    """Label با پشتیبانی از RTL - استفاده از reshape_text"""
+    """
+    Label با پشتیبانی از RTL
+    - برای Labelهای معمولی که متن ثابت دارند
+    - برای تغییرات پویا، از set_text استفاده کنید
+    """
     
     def __init__(self, **kwargs):
         # ذخیره متن اصلی
@@ -177,6 +181,7 @@ class RTLLabel(Label):
         kwargs['font_name'] = FONT_PATH if FONT_PATH != 'Roboto' else 'Roboto'
         kwargs['halign'] = 'right'
         kwargs['valign'] = 'middle'
+        kwargs['text_size'] = (kwargs.get('width', dp(300)), None) if 'width' in kwargs else (None, None)
         
         super().__init__(**kwargs)
         
@@ -190,9 +195,18 @@ class RTLLabel(Label):
             self.text = reshape_text(value)
         else:
             self.text = value
+    
+    def set_text(self, text):
+        """تنظیم متن با شکل‌دهی"""
+        self._original_text = text
+        if text and is_rtl_text(text):
+            self.text = reshape_text(text)
+        else:
+            self.text = text
 
 
 def is_rtl_text(text):
+    """تشخیص RTL بودن متن"""
     if not text:
         return False
     text = str(text)
@@ -204,6 +218,7 @@ def is_rtl_text(text):
 
 
 def auto_align_textinput(textinput):
+    """تنظیم خودکار alignment بر اساس متن"""
     if textinput.text and is_rtl_text(textinput.text):
         textinput.halign = 'right'
         textinput.padding = (15, 12, 15, 12)
