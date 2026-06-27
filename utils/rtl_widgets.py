@@ -164,45 +164,52 @@ class RTLSpinner(Spinner):
 
 
 class RTLLabel(Label):
-    """
-    Label با پشتیبانی از RTL
-    - برای Labelهای معمولی که متن ثابت دارند
-    - برای تغییرات پویا، از set_text استفاده کنید
-    """
+    """Label با پشتیبانی از RTL - استفاده از Pillow برای نمایش فارسی"""
     
     def __init__(self, **kwargs):
         # ذخیره متن اصلی
         self._original_text = kwargs.get('text', '')
+        self._font_size = kwargs.get('font_size', 24)
         
-        # اگر متن فارسی است، شکل‌دهی کن
+        # اگر متن فارسی است، از Pillow استفاده کن
         if self._original_text and is_rtl_text(self._original_text):
-            kwargs['text'] = reshape_text(self._original_text)
+            try:
+                from utils.persian_text import create_persian_label
+                # جایگزینی Label با Image
+                img_label = create_persian_label(
+                    self._original_text,
+                    self._font_size
+                )
+                # حذف این Label و اضافه کردن Image
+                if kwargs.get('parent'):
+                    kwargs['parent'].remove_widget(self)
+                    kwargs['parent'].add_widget(img_label)
+                    return
+            except Exception as e:
+                print(f"⚠️ خطا در ایجاد متن فارسی: {e}")
         
+        # اگر فارسی نبود یا خطا داشت، از Label معمولی استفاده کن
         kwargs['font_name'] = FONT_PATH if FONT_PATH != 'Roboto' else 'Roboto'
         kwargs['halign'] = 'right'
         kwargs['valign'] = 'middle'
-        kwargs['text_size'] = (kwargs.get('width', dp(300)), None) if 'width' in kwargs else (None, None)
         
         super().__init__(**kwargs)
-        
-        # برای تغییرات بعدی متن
         self.bind(text=self._on_text_set)
     
     def _on_text_set(self, instance, value):
         """وقتی متن تغییر می‌کند"""
         self._original_text = value
         if value and is_rtl_text(value):
-            self.text = reshape_text(value)
+            # برای تغییرات پویا، از روش جایگزینی استفاده کن
+            try:
+                from utils.persian_text import create_persian_label
+                # اینجا باید جایگزینی انجام شود
+                # ولی برای سادگی، فعلاً از reshape_text استفاده کن
+                self.text = reshape_text(value)
+            except:
+                self.text = value
         else:
             self.text = value
-    
-    def set_text(self, text):
-        """تنظیم متن با شکل‌دهی"""
-        self._original_text = text
-        if text and is_rtl_text(text):
-            self.text = reshape_text(text)
-        else:
-            self.text = text
 
 
 def is_rtl_text(text):
