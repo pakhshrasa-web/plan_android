@@ -1,5 +1,6 @@
 """
 ویجت‌های RTL برای پشتیبانی از متن فارسی
+- استفاده از arabic_reshaper برای شکل‌دهی متن
 """
 
 import os
@@ -9,53 +10,54 @@ from kivy.uix.label import Label
 from kivy.metrics import dp
 from kivy.clock import Clock
 from kivy.core.window import Window
+from kivy.core.text import LabelBase
+
+# ========== کتابخانه‌های RTL ==========
+try:
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+    HAS_RTL_LIBS = True
+    print("✅ کتابخانه‌های RTL بارگذاری شدند")
+except ImportError:
+    HAS_RTL_LIBS = False
+    print("⚠️ کتابخانه‌های RTL در دسترس نیستند")
 
 # ========== تنظیم فونت ==========
-# مسیر مستقیم فونت در اندروید
-# این مسیر از لاگ بدست آمده: /data/data/org.pakhshrasa.planandroid/files/app/fonts/Vazirmatn-Regular.ttf
-
-def get_font_path():
-    """پیدا کردن مسیر فونت"""
-    # 1. فونت داخلی برنامه (در اندروید)
-    app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    internal_fonts = [
-        os.path.join(app_dir, 'fonts', 'Vazirmatn-Regular.ttf'),
-        os.path.join(app_dir, 'fonts', 'Vazirmatn.ttf'),
-    ]
-    
-    for path in internal_fonts:
-        if os.path.exists(path):
-            print(f"✅ فونت داخلی پیدا شد: {path}")
-            return path
-    
-    # 2. فونت سیستمی (در صورت نبود فونت داخلی)
-    system_fonts = [
-        '/system/fonts/NotoNaskhArabic-Regular.ttf',
+# پیدا کردن فونت
+def get_font():
+    font_paths = [
         '/system/fonts/DroidSansFallback.ttf',
+        '/system/fonts/NotoNaskhArabic-Regular.ttf',
+        '/system/fonts/NotoSansArabic-Regular.ttf',
     ]
     
-    for path in system_fonts:
+    for path in font_paths:
         if os.path.exists(path):
-            print(f"✅ فونت سیستمی پیدا شد: {path}")
             return path
     
     return 'Roboto'
 
-# پیدا کردن فونت
-FONT_PATH = get_font_path()
+FONT_PATH = get_font()
 print(f"📁 فونت استفاده شده: {FONT_PATH}")
 
 
+def reshape_text(text):
+    """شکل‌دهی متن فارسی/عربی"""
+    if not text or not HAS_RTL_LIBS:
+        return text
+    try:
+        reshaped = arabic_reshaper.reshape(text)
+        bidi_text = get_display(reshaped)
+        return bidi_text
+    except:
+        return text
+
+
 class RTLTextInput(TextInput):
-    """TextInput با پشتیبانی از RTL و فونت فارسی"""
+    """TextInput با پشتیبانی از RTL"""
     
     def __init__(self, **kwargs):
-        # استفاده از مسیر مستقیم فونت
-        if FONT_PATH != 'Roboto':
-            kwargs['font_name'] = FONT_PATH  # مسیر مستقیم
-        else:
-            kwargs['font_name'] = 'Roboto'
-        
+        kwargs['font_name'] = FONT_PATH if FONT_PATH != 'Roboto' else 'Roboto'
         kwargs['halign'] = 'right'
         kwargs['padding'] = (dp(15), dp(12), dp(15), dp(12))
         kwargs['write_tab'] = False
@@ -150,13 +152,10 @@ class RTLTextInput(TextInput):
 
 
 class RTLSpinner(Spinner):
-    """Spinner با پشتیبانی از RTL و فونت فارسی"""
+    """Spinner با پشتیبانی از RTL"""
     
     def __init__(self, **kwargs):
-        if FONT_PATH != 'Roboto':
-            kwargs['font_name'] = FONT_PATH
-        else:
-            kwargs['font_name'] = 'Roboto'
+        kwargs['font_name'] = FONT_PATH if FONT_PATH != 'Roboto' else 'Roboto'
         kwargs['halign'] = 'right'
         kwargs['text_autoupdate'] = True
         kwargs['size_hint_y'] = None
@@ -165,24 +164,32 @@ class RTLSpinner(Spinner):
 
 
 class RTLLabel(Label):
-    """Label با پشتیبانی از RTL و فونت فارسی"""
+    """Label با پشتیبانی از RTL - استفاده از reshape_text"""
     
     def __init__(self, **kwargs):
-        if FONT_PATH != 'Roboto':
-            kwargs['font_name'] = FONT_PATH
-        else:
-            kwargs['font_name'] = 'Roboto'
+        # ذخیره متن اصلی
+        self._original_text = kwargs.get('text', '')
+        
+        # اگر متن فارسی است، شکل‌دهی کن
+        if self._original_text and is_rtl_text(self._original_text):
+            kwargs['text'] = reshape_text(self._original_text)
+        
+        kwargs['font_name'] = FONT_PATH if FONT_PATH != 'Roboto' else 'Roboto'
         kwargs['halign'] = 'right'
         kwargs['valign'] = 'middle'
+        
         super().__init__(**kwargs)
         
-        self.bind(text=self._update_alignment)
+        # برای تغییرات بعدی متن
+        self.bind(text=self._on_text_set)
     
-    def _update_alignment(self, instance, value):
+    def _on_text_set(self, instance, value):
+        """وقتی متن تغییر می‌کند"""
+        self._original_text = value
         if value and is_rtl_text(value):
-            self.halign = 'right'
+            self.text = reshape_text(value)
         else:
-            self.halign = 'left'
+            self.text = value
 
 
 def is_rtl_text(text):
