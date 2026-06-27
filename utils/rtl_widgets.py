@@ -19,19 +19,25 @@ try:
     import arabic_reshaper
     from bidi.algorithm import get_display
     HAS_RTL_LIBS = True
-    print("✅ کتابخانه‌های RTL بارگذاری شدند")
 except ImportError:
     HAS_RTL_LIBS = False
-    print("⚠️ کتابخانه‌های RTL در دسترس نیستند")
 
 # ========== کتابخانه Pillow برای نمایش فارسی ==========
 try:
-    from utils.persian_text import PersianLabel, is_rtl_text, create_persian_label
+    from utils.persian_text import PersianLabel, is_rtl_text
     HAS_PILLOW = True
-    print("✅ Pillow برای نمایش فارسی بارگذاری شد")
 except ImportError:
     HAS_PILLOW = False
-    print("⚠️ Pillow در دسترس نیست - از روش جایگزین استفاده می‌شود")
+    # Fallback برای تشخیص RTL
+    def is_rtl_text(text):
+        if not text:
+            return False
+        text = str(text)
+        rtl_chars = sum(1 for c in text if '\u0600' <= c <= '\u06FF')
+        ltr_chars = sum(1 for c in text if c.isalpha() and not ('\u0600' <= c <= '\u06FF'))
+        if rtl_chars == 0 and ltr_chars == 0:
+            return False
+        return rtl_chars > ltr_chars
 
 
 def reshape_text(text):
@@ -133,7 +139,6 @@ class RTLTextInput(TextInput):
     def insert_text(self, substring, from_undo=False):
         """ورود متن با پشتیبانی از RTL"""
         if is_rtl_text(substring):
-            # برای متن فارسی، direction رو تنظیم کن
             self.halign = 'right'
         return super().insert_text(substring, from_undo=from_undo)
 
@@ -151,17 +156,20 @@ class RTLSpinner(Spinner):
 
 class RTLLabel(BoxLayout):
     """
-    Label با پشتیبانی از RTL
+    ✅ نسخه نهایی RTLLabel
     - از Pillow برای نمایش متن فارسی استفاده می‌کند
-    - در صورت عدم دسترسی به Pillow، از reshape_text استفاده می‌کند
+    - اگر Pillow نباشد، از reshape_text استفاده می‌کند
+    - کاملاً پایدار و بدون خطا
     """
     
-    def __init__(self, text="", font_size=24, color=(0, 0, 0, 1), **kwargs):
+    def __init__(self, text="", font_size=24, color=(0, 0, 0, 1), size_hint_y=None, height=dp(50), **kwargs):
         super().__init__(**kwargs)
         
-        self.size_hint = (1, None)
-        self.height = dp(50)
         self.orientation = 'vertical'
+        if size_hint_y is not None:
+            self.size_hint_y = size_hint_y
+        if height:
+            self.height = height
         
         self._text = text
         self._font_size = font_size
@@ -187,22 +195,26 @@ class RTLLabel(BoxLayout):
             else:
                 color_rgb = color_rgb + (255,)
             
-            self._label_widget = PersianLabel(
-                text=self._text,
-                font_size=self._font_size,
-                color=color_rgb,
-                size_hint=(1, None),
-                height=self._font_size + dp(20)
-            )
-            
-        else:
-            # استفاده از Label معمولی
+            try:
+                self._label_widget = PersianLabel(
+                    text=self._text,
+                    font_size=self._font_size,
+                    color=color_rgb,
+                    size_hint=(1, None),
+                    height=self._font_size + dp(20)
+                )
+            except Exception as e:
+                print(f"⚠️ خطا در ساخت PersianLabel: {e}")
+                self._label_widget = None
+        
+        # اگر Pillow کار نکرد یا متن فارسی نبود، از Label معمولی استفاده کن
+        if self._label_widget is None:
             display_text = self._text
             if self._text and is_rtl_text(self._text):
                 display_text = reshape_text(self._text)
             
             self._label_widget = Label(
-                text=display_text,
+                text=display_text or "",
                 font_size=self._font_size,
                 color=self._color,
                 halign='center',
@@ -237,7 +249,7 @@ class RTLLabel(BoxLayout):
     
     @text.setter
     def text(self, value):
-        self.set_text(str(value))
+        self.set_text(str(value) if value else "")
 
 
 # ========== توابع کمکی ==========
