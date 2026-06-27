@@ -1,5 +1,5 @@
 """
-ابزارهای نمایش متن فارسی با استفاده از PIL
+ابزارهای نمایش متن فارسی با استفاده از Pillow
 """
 
 from kivy.uix.image import Image
@@ -8,31 +8,28 @@ from io import BytesIO
 from PIL import Image as PILImage, ImageDraw, ImageFont
 import os
 
+# پیدا کردن بهترین فونت برای PIL
+def get_pil_font(font_size=24):
+    font_paths = [
+        '/system/fonts/NotoNaskhArabic-Regular.ttf',
+        '/system/fonts/DroidSansFallback.ttf',
+        '/system/fonts/NotoSansArabic-Regular.ttf',
+    ]
+    
+    for path in font_paths:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, font_size)
+            except:
+                continue
+    
+    return ImageFont.load_default()
+
+
 def create_persian_label(text, font_size=24, color=(0, 0, 0, 255), bg_color=(255, 255, 255, 0)):
-    """
-    ایجاد یک Image widget با متن فارسی
-    """
+    """ایجاد Image widget با متن فارسی"""
     try:
-        # پیدا کردن فونت
-        font_paths = [
-            '/system/fonts/DroidSansFallback.ttf',
-            '/system/fonts/NotoNaskhArabic-Regular.ttf',
-            '/system/fonts/NotoSansArabic-Regular.ttf',
-        ]
-        
-        font = None
-        for path in font_paths:
-            if os.path.exists(path):
-                try:
-                    font = ImageFont.truetype(path, font_size)
-                    print(f"✅ فونت برای PIL پیدا شد: {path}")
-                    break
-                except:
-                    continue
-        
-        if font is None:
-            font = ImageFont.load_default()
-            print("⚠️ استفاده از فونت پیش‌فرض PIL")
+        font = get_pil_font(font_size)
         
         # اندازه‌گیری متن
         bbox = font.getbbox(text)
@@ -56,3 +53,17 @@ def create_persian_label(text, font_size=24, color=(0, 0, 0, 255), bg_color=(255
         print(f"⚠️ خطا در ایجاد متن فارسی: {e}")
         from kivy.uix.label import Label
         return Label(text=text)
+
+
+def create_persian_button(text, font_size=20, color=(1, 1, 1, 1), bg_color=(0.2, 0.6, 0.2, 1)):
+    """ایجاد دکمه با متن فارسی"""
+    from kivy.uix.button import Button
+    
+    # ایجاد تصویر با رنگ پس‌زمینه
+    img = create_persian_label(text, font_size, color, bg_color)
+    
+    # قرار دادن تصویر در دکمه
+    btn = Button()
+    btn.add_widget(img)
+    
+    return btn
