@@ -156,13 +156,21 @@ class RTLSpinner(Spinner):
 
 class RTLLabel(BoxLayout):
     """
-    ✅ نسخه نهایی RTLLabel
+    ✅ نسخه نهایی RTLLabel - بدون پارامترهای اضافی
     - از Pillow برای نمایش متن فارسی استفاده می‌کند
     - اگر Pillow نباشد، از reshape_text استفاده می‌کند
-    - کاملاً پایدار و بدون خطا
     """
     
-    def __init__(self, text="", font_size=24, color=(0, 0, 0, 1), size_hint_y=None, height=dp(50), **kwargs):
+    def __init__(self, **kwargs):  # ✅ فقط **kwargs
+        # استخراج پارامترهای مورد نیاز
+        text = kwargs.pop('text', '')
+        font_size = kwargs.pop('font_size', 24)
+        color = kwargs.pop('color', (0, 0, 0, 1))
+        bold = kwargs.pop('bold', False)  # ✅ bold رو می‌گیریم ولی استفاده نمی‌کنیم
+        size_hint_y = kwargs.pop('size_hint_y', None)
+        height = kwargs.pop('height', dp(50))
+        markup = kwargs.pop('markup', False)  # ✅ markup رو هم می‌گیریم
+        
         super().__init__(**kwargs)
         
         self.orientation = 'vertical'
