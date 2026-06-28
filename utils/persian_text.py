@@ -28,7 +28,7 @@ except ImportError:
 
 class PersianLabel(Image):
     def __init__(self, text="", font_size=24, color=(255, 255, 255, 255), **kwargs):
-        # ✅ حذف تمام پارامترهای غیرمجاز برای Image
+        # حذف پارامترهای غیرمجاز
         kwargs.pop('bold', None)
         kwargs.pop('markup', None)
         kwargs.pop('halign', None)
@@ -41,7 +41,13 @@ class PersianLabel(Image):
         super().__init__(**kwargs)
         self._text = text
         self._font_size = font_size
-        self._color = color
+        
+        # ✅ تبدیل رنگ به int
+        if isinstance(color, (tuple, list)):
+            self._color = tuple(int(c) for c in color)
+        else:
+            self._color = (255, 255, 255, 255)
+        
         self._font_path = self._find_font()
         print(f"🔍 فونت انتخاب شده برای PersianLabel: {self._font_path}")
         self._update_texture()
@@ -120,11 +126,17 @@ class PersianLabel(Image):
             offset_x = padding - min(left, 0)
             offset_y = padding - min(top, 0)
             
+            # ✅ اطمینان از int بودن رنگ
+            if isinstance(self._color, (tuple, list)):
+                color = tuple(int(c) for c in self._color)
+            else:
+                color = (255, 255, 255, 255)
+            
             draw.text(
                 (offset_x, offset_y),
                 display_text,
                 font=font,
-                fill=self._color
+                fill=color
             )
             
             # ========== 6. تبدیل به Texture ==========
@@ -165,10 +177,7 @@ class PersianLabel(Image):
     
     def _find_font(self):
         """پیدا کردن بهترین فونت موجود"""
-        
-        # ✅ لیست مسیرهای فونت برای ویندوز و اندروید
         font_list = [
-            # مسیرهای ویندوز (همون چیزی که الان هست)
             'fonts/Amiri-Regular.ttf',
             'fonts/Lateef-Regular.ttf',
             'fonts/NotoNasrArabic-Regular.ttf',
@@ -177,11 +186,10 @@ class PersianLabel(Image):
             os.path.join(os.path.dirname(os.path.dirname(__file__)), 'fonts', 'Lateef-Regular.ttf'),
             os.path.join(os.path.dirname(os.path.dirname(__file__)), 'fonts', 'NotoNasrArabic-Regular.ttf'),
             os.path.join(os.path.dirname(os.path.dirname(__file__)), 'fonts', 'Vazirmatn-Regular.ttf'),
-            
-            # ✅ مسیرهای اندروید
-            '/data/data/org.pakhshrasa.planandroid/files/app/fonts/Amiri-Regular.ttf',
-            './fonts/Amiri-Regular.ttf',
-            './app/fonts/Amiri-Regular.ttf',
+            '/system/fonts/NotoNaskhArabic-Regular.ttf',
+            '/system/fonts/NotoSansArabic-Regular.ttf',
+            '/system/fonts/DroidNaskh-Regular.ttf',
+            '/system/fonts/DroidSansFallback.ttf',
         ]
         
         for path in font_list:
