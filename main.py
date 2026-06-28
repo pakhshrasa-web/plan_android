@@ -269,11 +269,12 @@ if platform != 'android':
     Window.size = (400, 650)
     
 # ========== ایمپورت ماژول‌های برنامه ==========
+# ========== ایمپورت ماژول‌های برنامه ==========
 try:
-    from utils.rtl_widgets import RTLTextInput, RTLSpinner, PersianButton
+    from utils.rtl_widgets import RTLTextInput, RTLSpinner, PersianComboBox, PersianButton, RTLLabel
     from utils.persian_text import PersianLabel
     from utils.text_helper import f
-    from utils.storage import get_data_path, init_data_path
+    from utils.storage import get_data_path, init_data_path  # ✅ اضافه شد
     from utils.file_manager import (
         get_agents, add_agent, delete_agent,
         get_routes, add_route, delete_route,
@@ -311,34 +312,81 @@ class LoginScreen(Screen):
     
     def build_ui(self):
         try:
-            layout = BoxLayout(orientation='vertical', spacing=dp(20), padding=dp(40))
+            layout = BoxLayout(orientation='vertical', padding=dp(20), spacing=dp(5))
             
-            header_layout = BoxLayout(size_hint_y=0.1, spacing=dp(10))
-            settings_btn = PersianButton(text='مدیریت', size_hint_x=0.2, background_color=(0.3, 0.3, 0.3, 1), size_hint_y=None, height=dp(50))
+            # ========== دکمه مدیریت (سمت چپ بالا) ==========
+            header_layout = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(10))
+            settings_btn = PersianButton(
+                text='مدیریت',
+                size_hint_x=0.2,
+                background_color=(0.3, 0.3, 0.3, 1),
+                size_hint_y=None,
+                height=dp(36)
+            )
             settings_btn.bind(on_press=self.open_settings)
             header_layout.add_widget(settings_btn)
-            header_layout.add_widget(Label(text='', size_hint_x=0.6))
-            header_layout.add_widget(Label(text='', size_hint_x=0.2))
+            header_layout.add_widget(Label(text='', size_hint_x=0.8))
             layout.add_widget(header_layout)
             
+            # ========== فاصله ۱ سانت ==========
+            layout.add_widget(Label(size_hint_y=None, height=dp(10)))
+            
+            # ========== عنوان مدیریت فروش ==========
             title = RTLLabel(
                 text='مدیریت فروش',
-                font_size=sp(28),
-                size_hint_y=0.2,
+                font_size=sp(32),
+                size_hint_y=None,
+                height=dp(50)
             )
             layout.add_widget(title)
             
-            self.username = RTLTextInput(hint_text='نام کاربری', size_hint_y=None, height=dp(60))
+            # ========== فاصله ۱ سانت ==========
+            layout.add_widget(Label(size_hint_y=None, height=dp(10)))
+            
+            # ========== فیلد نام کاربری (ارتفاع ۱ سانت = ۴۰px) ==========
+            self.username = RTLTextInput(
+                hint_text='نام کاربری',
+                size_hint_y=None,
+                height=dp(40),
+                font_size=sp(72)
+            )
             layout.add_widget(self.username)
             
-            self.password = RTLTextInput(hint_text='رمز عبور', password=True, size_hint_y=None, height=dp(60))
+            # ========== فاصله ۲ میلیمتر ==========
+            layout.add_widget(Label(size_hint_y=None, height=dp(2)))
+            
+            # ========== فیلد رمز عبور (ارتفاع ۱ سانت) ==========
+            self.password = RTLTextInput(
+                hint_text='رمز عبور',
+                password=True,
+                size_hint_y=None,
+                height=dp(40),
+                font_size=sp(72)
+            )
             layout.add_widget(self.password)
             
-            btn = PersianButton(text='ورود', size_hint_y=None, height=dp(55))
+            # ========== فاصله ۳ میلیمتر ==========
+            layout.add_widget(Label(size_hint_y=None, height=dp(3)))
+            
+            # ========== دکمه ورود ==========
+            btn = PersianButton(
+                text='ورود',
+                size_hint_y=None,
+                height=dp(45)
+            )
             btn.bind(on_press=self.check_login)
             layout.add_widget(btn)
             
-            register_btn = PersianButton(text='ثبت نام', size_hint_y=None, height=dp(45), background_color=(0.3, 0.6, 0.3, 1))
+            # ========== فاصله ۳ میلیمتر ==========
+            layout.add_widget(Label(size_hint_y=None, height=dp(3)))
+            
+            # ========== دکمه ثبت نام ==========
+            register_btn = PersianButton(
+                text='ثبت نام',
+                size_hint_y=None,
+                height=dp(40),
+                background_color=(0.3, 0.6, 0.3, 1)
+            )
             register_btn.bind(on_press=self.open_register)
             layout.add_widget(register_btn)
             
@@ -497,39 +545,59 @@ class AdminSettingsScreen(Screen):
     
     def build_ui(self):
         try:
-            layout = BoxLayout(orientation='vertical')
+            layout = BoxLayout(orientation='vertical', padding=[dp(5), dp(5), dp(5), dp(5)])
             
-            header = RTLLabel(
-                text='تنظیمات سیستم',
-                size_hint_y=0.07,
-                font_size=sp(20),
+            # ❌ هدر حذف شد
+            
+            # ========== تب‌ها (از راست به چپ) ==========
+            tabs_layout = BoxLayout(
+                size_hint_y=None,
+                height=dp(38),
+                spacing=dp(2)
             )
-            layout.add_widget(header)
             
-            tabs_layout = BoxLayout(size_hint_y=0.08, spacing=dp(2))
-            
-            btn_users = PersianButton(text='مدیریت کاربران', background_color=(0.3, 0.5, 0.8, 1), size_hint_y=None, height=dp(45))
-            btn_users.bind(on_press=lambda x: self.switch_tab(0))
-            tabs_layout.add_widget(btn_users)
-            
-            btn_codes = PersianButton(text='کدهای ثبت نام', background_color=(0.3, 0.5, 0.8, 0.6), size_hint_y=None, height=dp(45))
-            btn_codes.bind(on_press=lambda x: self.switch_tab(1))
-            tabs_layout.add_widget(btn_codes)
-            
-            btn_general = PersianButton(text='تنظیمات عمومی', background_color=(0.3, 0.5, 0.8, 0.6), size_hint_y=None, height=dp(45))
-            btn_general.bind(on_press=lambda x: self.switch_tab(2))
-            tabs_layout.add_widget(btn_general)
-            
-            btn_password = PersianButton(text='تغییر رمز', background_color=(0.3, 0.5, 0.8, 0.6), size_hint_y=None, height=dp(45))
+            btn_password = PersianButton(
+                text='تغییر رمز',
+                background_color=(0.3, 0.5, 0.8, 0.6),
+                size_hint_y=None,
+                height=dp(34)
+            )
             btn_password.bind(on_press=lambda x: self.switch_tab(3))
             tabs_layout.add_widget(btn_password)
             
+            btn_codes = PersianButton(
+                text='کدهای ثبت نام',
+                background_color=(0.3, 0.5, 0.8, 0.6),
+                size_hint_y=None,
+                height=dp(34)
+            )
+            btn_codes.bind(on_press=lambda x: self.switch_tab(1))
+            tabs_layout.add_widget(btn_codes)
+            
+            btn_users = PersianButton(
+                text='مدیریت کاربران',
+                background_color=(0.3, 0.5, 0.8, 1),
+                size_hint_y=None,
+                height=dp(34)
+            )
+            btn_users.bind(on_press=lambda x: self.switch_tab(0))
+            tabs_layout.add_widget(btn_users)
+            
+            # ❌ تب تنظیمات عمومی حذف شد
+            
             layout.add_widget(tabs_layout)
             
+            # ========== محتوای تب‌ها ==========
             self.content_area = BoxLayout(orientation='vertical')
             layout.add_widget(self.content_area)
             
-            back_btn = PersianButton(text='بازگشت', background_color=(0.5, 0.5, 0.5, 1), size_hint_y=None, height=dp(45))
+            # ========== دکمه بازگشت ==========
+            back_btn = PersianButton(
+                text='بازگشت',
+                background_color=(0.5, 0.5, 0.5, 1),
+                size_hint_y=None,
+                height=dp(36)
+            )
             back_btn.bind(on_press=self.go_back)
             layout.add_widget(back_btn)
             
@@ -558,45 +626,92 @@ class AdminSettingsScreen(Screen):
     
     def show_change_password_tab(self):
         try:
-            layout = BoxLayout(orientation='vertical', padding=dp(30), spacing=dp(15))
+            layout = BoxLayout(orientation='vertical', padding=dp(15), spacing=dp(10))
             
+            # عنوان
             layout.add_widget(RTLLabel(
                 text='تغییر رمز عبور مدیر',
                 size_hint_y=None,
-                height=dp(50),
+                height=dp(40),
                 font_size=sp(18),
                 bold=True,
+                color=(0.2, 0.5, 0.8, 1)
             ))
+            
+            # رمز فعلی
             layout.add_widget(RTLLabel(
                 text='رمز عبور فعلی:',
                 size_hint_y=None,
-                height=dp(30),
+                height=dp(28),
+                font_size=sp(14)
             ))
-            self.old_password = RTLTextInput(password=True, multiline=False, size_hint_y=None, height=dp(50))
+            self.old_password = RTLTextInput(
+                password=True,
+                multiline=False,
+                size_hint_y=None,
+                height=dp(50),
+                font_size=sp(36),
+                hint_text='رمز عبور فعلی را وارد کنید'
+            )
             layout.add_widget(self.old_password)
             
+            # رمز جدید
             layout.add_widget(RTLLabel(
                 text='رمز عبور جدید:',
                 size_hint_y=None,
-                height=dp(30),
+                height=dp(28),
+                font_size=sp(14)
             ))
-            self.new_password = RTLTextInput(password=True, multiline=False, size_hint_y=None, height=dp(50))
+            self.new_password = RTLTextInput(
+                password=True,
+                multiline=False,
+                size_hint_y=None,
+                height=dp(50),
+                font_size=sp(36),
+                hint_text='رمز عبور جدید را وارد کنید'
+            )
             layout.add_widget(self.new_password)
             
+            # تکرار رمز جدید
             layout.add_widget(RTLLabel(
                 text='تکرار رمز عبور جدید:',
                 size_hint_y=None,
-                height=dp(30),
+                height=dp(28),
+                font_size=sp(14)
             ))
-            self.confirm_password = RTLTextInput(password=True, multiline=False, size_hint_y=None, height=dp(50))
+            self.confirm_password = RTLTextInput(
+                password=True,
+                multiline=False,
+                size_hint_y=None,
+                height=dp(50),
+                font_size=sp(36),
+                hint_text='تکرار رمز عبور جدید'
+            )
             layout.add_widget(self.confirm_password)
             
-            btn_layout = BoxLayout(spacing=dp(10), size_hint_y=None, height=dp(50), padding=(0, dp(20), 0, 0))
-            save_btn = PersianButton(text='تغییر رمز', background_color=(0.2, 0.7, 0.2, 1), size_hint_y=None, height=dp(45))
+            # دکمه‌ها
+            btn_layout = BoxLayout(
+                spacing=dp(10),
+                size_hint_y=None,
+                height=dp(48),
+                padding=(0, dp(8), 0, 0)
+            )
+            
+            save_btn = PersianButton(
+                text='تغییر رمز',
+                background_color=(0.2, 0.7, 0.2, 1),
+                size_hint_y=None,
+                height=dp(42)
+            )
             save_btn.bind(on_press=self.change_password)
             btn_layout.add_widget(save_btn)
             
-            clear_btn = PersianButton(text='پاک کردن', background_color=(0.8, 0.5, 0.2, 1), size_hint_y=None, height=dp(45))
+            clear_btn = PersianButton(
+                text='پاک کردن',
+                background_color=(0.8, 0.5, 0.2, 1),
+                size_hint_y=None,
+                height=dp(42)
+            )
             clear_btn.bind(on_press=self.clear_password_fields)
             btn_layout.add_widget(clear_btn)
             
@@ -642,27 +757,58 @@ class AdminSettingsScreen(Screen):
             users = get_users()
             
             layout = ScrollView()
-            content = GridLayout(cols=1, spacing=dp(10), size_hint_y=None, padding=dp(10))
+            content = GridLayout(
+                cols=1,
+                spacing=dp(5),
+                size_hint_y=None,
+                padding=dp(5)
+            )
             content.bind(minimum_height=content.setter('height'))
             
+            # ========== فاصله ۵ میلیمتر از تب ==========
+            content.add_widget(Label(size_hint_y=None, height=dp(5)))
+            
+            # ========== عنوان ==========
             content.add_widget(RTLLabel(
                 text='📋 لیست کاربران',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(32),
                 font_size=sp(16),
                 bold=True,
+                color=(0.2, 0.5, 0.8, 1)
             ))
             
+            if not users:
+                content.add_widget(RTLLabel(
+                    text='هیچ کاربری ثبت نشده است',
+                    size_hint_y=None,
+                    height=dp(32),
+                    font_size=sp(14),
+                    color=(0.5, 0.5, 0.5, 1)
+                ))
+            
             for user in users:
-                user_box = BoxLayout(size_hint_y=None, height=dp(80), spacing=dp(5))
-                info = f"{user.get('username', '')}\n{user.get('name', '')}\n{user.get('role', '')}"
+                user_box = BoxLayout(
+                    size_hint_y=None,
+                    height=dp(50),
+                    spacing=dp(5)
+                )
+                
+                info = f"{user.get('username', '')} | {user.get('name', '')} | {user.get('role', '')}"
                 user_info = RTLLabel(
                     text=info,
                     size_hint_x=0.7,
+                    font_size=sp(13)
                 )
                 user_box.add_widget(user_info)
                 
-                del_btn = PersianButton(text='حذف', size_hint_x=0.3, background_color=(0.8, 0.2, 0.2, 1), size_hint_y=None, height=dp(40))
+                del_btn = PersianButton(
+                    text='حذف',
+                    size_hint_x=0.3,
+                    background_color=(0.8, 0.2, 0.2, 1),
+                    size_hint_y=None,
+                    height=dp(32)
+                )
                 del_btn.bind(on_press=lambda x, uid=user.get('id'): self.delete_user(uid))
                 user_box.add_widget(del_btn)
                 content.add_widget(user_box)
@@ -686,12 +832,21 @@ class AdminSettingsScreen(Screen):
             content.add_widget(RTLLabel(
                 text=f'آیا از حذف کاربر "{username}" مطمئن هستید؟',
                 size_hint_y=None,
-                height=dp(50),
+                height=dp(45),
+                font_size=sp(16)
             ))
             
-            btn_layout = BoxLayout(spacing=dp(10), size_hint_y=None, height=dp(50))
-            yes_btn = PersianButton(text='بله، حذف شود', size_hint_y=None, height=dp(45))
-            no_btn = PersianButton(text='خیر، انصراف', size_hint_y=None, height=dp(45))
+            btn_layout = BoxLayout(spacing=dp(10), size_hint_y=None, height=dp(45))
+            yes_btn = PersianButton(
+                text='بله، حذف شود',
+                size_hint_y=None,
+                height=dp(40)
+            )
+            no_btn = PersianButton(
+                text='خیر، انصراف',
+                size_hint_y=None,
+                height=dp(40)
+            )
             btn_layout.add_widget(yes_btn)
             btn_layout.add_widget(no_btn)
             content.add_widget(btn_layout)
@@ -719,45 +874,42 @@ class AdminSettingsScreen(Screen):
             roles = ['مدیر', 'ادمین', 'سوپروایزر', 'بازاریاب', 'حسابدار', 'موزع', 'راننده', 'انباردار', 'سایر']
             
             layout = ScrollView()
-            content = GridLayout(cols=1, spacing=dp(10), size_hint_y=None, padding=dp(10))
+            content = GridLayout(
+                cols=1,
+                spacing=dp(4),
+                size_hint_y=None,
+                padding=dp(5)
+            )
             content.bind(minimum_height=content.setter('height'))
             
-            content.add_widget(RTLLabel(
-                text='➕ ایجاد کد جدید',
-                size_hint_y=None,
-                height=dp(40),
-                font_size=sp(16),
-                bold=True,
-            ))
+            content.add_widget(Label(size_hint_y=None, height=dp(5)))
             
-            role_spinner = RTLSpinner(text=roles[0], values=roles, size_hint_y=None, height=dp(50))
+            # ✅ استفاده از PersianComboBox
+            role_spinner = PersianComboBox(
+                text='مدیر',
+                values=roles,
+                height=dp(45)
+            )
             content.add_widget(role_spinner)
             
-            name_input = RTLTextInput(hint_text='نام و نام خانوادگی', multiline=False, size_hint_y=None, height=dp(50))
+            content.add_widget(Label(size_hint_y=None, height=dp(2)))
+            
+            name_input = RTLTextInput(
+                hint_text='نام و نام خانوادگی',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(45),
+                font_size=sp(36)
+            )
             content.add_widget(name_input)
             
-            create_btn = PersianButton(text='ساخت کد', size_hint_y=None, height=dp(50), background_color=(0.2, 0.7, 0.2, 1))
-            content.add_widget(create_btn)
-            
-            content.add_widget(RTLLabel(
-                text='📋 کدهای فعال',
+            create_btn = PersianButton(
+                text='ساخت کد',
                 size_hint_y=None,
-                height=dp(40),
-                font_size=sp(16),
-                bold=True,
-            ))
-            
-            codes = get_codes()
-            for code_info in codes:
-                if not code_info.get('used', False):
-                    code_box = BoxLayout(size_hint_y=None, height=dp(50), spacing=dp(5))
-                    code_text = f"{code_info['code']} - {code_info['role']} - {code_info['name']}"
-                    code_label = RTLLabel(
-                        text=code_text,
-                        size_hint_x=0.8,
-                    )
-                    code_box.add_widget(code_label)
-                    content.add_widget(code_box)
+                height=dp(45),
+                background_color=(0.2, 0.7, 0.2, 1)
+            )
+            content.add_widget(create_btn)
             
             def do_create(instance):
                 try:
@@ -769,72 +921,51 @@ class AdminSettingsScreen(Screen):
                     ErrorPopup.show_error(f"خطا در ساخت کد: {e}", error_details)
             
             create_btn.bind(on_press=do_create)
+          
+            # ========== لیست کدهای فعال ==========
+            content.add_widget(RTLLabel(
+                text='📋 کدهای فعال',
+                size_hint_y=None,
+                height=dp(35),
+                font_size=sp(16),
+                bold=True,
+                color=(0.2, 0.5, 0.8, 1)
+            ))
+            
+            codes = get_codes()
+            has_codes = False
+            for code_info in codes:
+                if not code_info.get('used', False):
+                    has_codes = True
+                    code_box = BoxLayout(
+                        size_hint_y=None,
+                        height=dp(35),
+                        spacing=dp(5)
+                    )
+                    code_text = f"{code_info['code']} - {code_info['role']} - {code_info['name']}"
+                    code_label = RTLLabel(
+                        text=code_text,
+                        size_hint_x=1,
+                        font_size=sp(14)
+                    )
+                    code_box.add_widget(code_label)
+                    content.add_widget(code_box)
+            
+            if not has_codes:
+                content.add_widget(RTLLabel(
+                    text='هیچ کد فعالی وجود ندارد',
+                    size_hint_y=None,
+                    height=dp(35),
+                    font_size=sp(14),
+                    color=(0.5, 0.5, 0.5, 1)
+                ))
             
             layout.add_widget(content)
             self.content_area.add_widget(layout)
         except Exception as e:
             error_details = traceback.format_exc()
             ErrorPopup.show_error(f"خطا در نمایش کدها: {e}", error_details)
-    
-    def show_general_settings_tab(self):
-        try:
-            settings = get_settings()
-            
-            layout = ScrollView()
-            content = GridLayout(cols=2, spacing=dp(10), size_hint_y=None, padding=dp(10))
-            content.bind(minimum_height=content.setter('height'))
-            
-            fields = [
-                ('supervision_rate', 'درصد سرکشی', '0.3'),
-                ('conversion_rate', 'نرخ تبدیل', '0.25'),
-                ('avg_invoice_amount', 'میانگین مبلغ فاکتور', '1000000'),
-                ('target_amount', 'تارگت ریالی', '50000000'),
-                ('work_start_time', 'ساعت شروع کار', '08:00'),
-                ('min_daily_hours', 'حداقل ساعت کاری', '6'),
-            ]
-            
-            inputs = {}
-            for key, label, default in fields:
-                content.add_widget(RTLLabel(
-                    text=label + ':',
-                    size_hint_y=None,
-                    height=dp(45),
-                ))
-                input_field = RTLTextInput(text=str(settings.get(key, default)), multiline=False, size_hint_y=None, height=dp(50))
-                content.add_widget(input_field)
-                inputs[key] = input_field
-            
-            save_btn = PersianButton(text='ذخیره تنظیمات', size_hint_y=None, height=dp(50), background_color=(0.2, 0.6, 1, 1))
-            content.add_widget(save_btn)
-            
-            layout.add_widget(content)
-            self.content_area.add_widget(layout)
-            save_btn.bind(on_press=lambda x: self.save_settings(inputs))
-        except Exception as e:
-            error_details = traceback.format_exc()
-            ErrorPopup.show_error(f"خطا در نمایش تنظیمات عمومی: {e}", error_details)
-    
-    def save_settings(self, inputs):
-        try:
-            settings = {}
-            for key, input_field in inputs.items():
-                value = input_field.text
-                if key in ['supervision_rate', 'conversion_rate']:
-                    try:
-                        value = float(value)
-                    except:
-                        value = 0
-                elif key in ['avg_invoice_amount', 'target_amount', 'min_daily_hours']:
-                    try:
-                        value = int(value)
-                    except:
-                        value = 0
-                settings[key] = value
-            update_settings(settings)
-            self.show_message('موفق', 'تنظیمات ذخیره شد')
-        except Exception as e:
-            error_details = traceback.format_exc()
-            ErrorPopup.show_error(f"خطا در ذخیره تنظیمات: {e}", error_details)
+   
     
     def show_message(self, title, message):
         try:
@@ -842,9 +973,14 @@ class AdminSettingsScreen(Screen):
             content.add_widget(RTLLabel(
                 text=message,
                 size_hint_y=None,
-                height=dp(50),
+                height=dp(45),
+                font_size=sp(16)
             ))
-            btn = PersianButton(text='باشه', size_hint_y=None, height=dp(40))
+            btn = PersianButton(
+                text='باشه',
+                size_hint_y=None,
+                height=dp(40)
+            )
             content.add_widget(btn)
             popup = Popup(title=title, content=content, size_hint=(0.8, 0.35))
             btn.bind(on_press=popup.dismiss)
@@ -870,39 +1006,66 @@ class AdminScreen(Screen):
     
     def build_ui(self):
         try:
-            main_layout = BoxLayout(orientation='vertical')
+            main_layout = BoxLayout(orientation='vertical', padding=[dp(5), dp(5), dp(5), dp(5)])
             
-            header = RTLLabel(
-                text='پنل مدیریت',
-                size_hint_y=0.07,
-                font_size=sp(20),
+            # ❌ هدر حذف شد
+            
+            # ========== تب‌ها (در بالا) ==========
+            tabs_layout = BoxLayout(
+                size_hint_y=None,
+                height=dp(38),
+                spacing=dp(2)
             )
-            main_layout.add_widget(header)
             
-            tabs_layout = BoxLayout(size_hint_y=0.08, spacing=dp(2))
-            
-            btn_agents = PersianButton(text='عامل‌ها', background_color=(0.3, 0.5, 0.8, 1), size_hint_y=None, height=dp(45))
-            btn_agents.bind(on_press=lambda x: self.switch_tab(0))
-            tabs_layout.add_widget(btn_agents)
-            
-            btn_routes = PersianButton(text='مسیرها', background_color=(0.3, 0.5, 0.8, 0.6), size_hint_y=None, height=dp(45))
-            btn_routes.bind(on_press=lambda x: self.switch_tab(1))
-            tabs_layout.add_widget(btn_routes)
-            
-            btn_customers = PersianButton(text='مشتریان', background_color=(0.3, 0.5, 0.8, 0.6), size_hint_y=None, height=dp(45))
-            btn_customers.bind(on_press=lambda x: self.switch_tab(2))
-            tabs_layout.add_widget(btn_customers)
-            
-            btn_settings = PersianButton(text='⚙️ تنظیمات', background_color=(0.3, 0.5, 0.8, 0.6), size_hint_y=None, height=dp(45))
+            btn_settings = PersianButton(
+                text='⚙️ تنظیمات',
+                background_color=(0.3, 0.5, 0.8, 0.6),
+                size_hint_y=None,
+                height=dp(34)
+            )
             btn_settings.bind(on_press=lambda x: self.switch_tab(3))
             tabs_layout.add_widget(btn_settings)
             
+            btn_customers = PersianButton(
+                text='مشتریان',
+                background_color=(0.3, 0.5, 0.8, 0.6),
+                size_hint_y=None,
+                height=dp(34)
+            )
+            btn_customers.bind(on_press=lambda x: self.switch_tab(2))
+            tabs_layout.add_widget(btn_customers)
+            
+            btn_routes = PersianButton(
+                text='مسیرها',
+                background_color=(0.3, 0.5, 0.8, 0.6),
+                size_hint_y=None,
+                height=dp(34)
+            )
+            btn_routes.bind(on_press=lambda x: self.switch_tab(1))
+            tabs_layout.add_widget(btn_routes)
+            
+            btn_agents = PersianButton(
+                text='عامل‌ها',
+                background_color=(0.3, 0.5, 0.8, 1),
+                size_hint_y=None,
+                height=dp(34)
+            )
+            btn_agents.bind(on_press=lambda x: self.switch_tab(0))
+            tabs_layout.add_widget(btn_agents)
+            
             main_layout.add_widget(tabs_layout)
             
+            # ========== محتوای تب‌ها ==========
             self.content_area = BoxLayout(orientation='vertical')
             main_layout.add_widget(self.content_area)
             
-            logout_btn = PersianButton(text='خروج', background_color=(0.8, 0.2, 0.2, 1), size_hint_y=None, height=dp(45))
+            # ========== دکمه خروج ==========
+            logout_btn = PersianButton(
+                text='خروج',
+                background_color=(0.8, 0.2, 0.2, 1),
+                size_hint_y=None,
+                height=dp(36)
+            )
             logout_btn.bind(on_press=self.logout)
             main_layout.add_widget(logout_btn)
             
@@ -933,49 +1096,110 @@ class AdminScreen(Screen):
     def show_agents_tab(self):
         try:
             layout = ScrollView()
-            content = GridLayout(cols=1, spacing=dp(10), size_hint_y=None, padding=dp(10))
+            content = GridLayout(
+                cols=1,
+                spacing=dp(8),
+                size_hint_y=None,
+                padding=dp(10)
+            )
             content.bind(minimum_height=content.setter('height'))
             
+            # عنوان
             content.add_widget(RTLLabel(
                 text='➕ افزودن عامل جدید',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(38),
                 font_size=sp(16),
                 bold=True,
+                color=(0.2, 0.5, 0.8, 1)
             ))
             
-            name_input = RTLTextInput(hint_text='نام کامل', multiline=False, size_hint_y=None, height=dp(50))
+            # فیلدها
+            name_input = RTLTextInput(
+                hint_text='نام کامل',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(50),
+                font_size=sp(36)
+            )
             content.add_widget(name_input)
             
-            phone_input = RTLTextInput(hint_text='شماره تلفن', multiline=False, size_hint_y=None, height=dp(50))
+            phone_input = RTLTextInput(
+                hint_text='شماره تلفن',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(50),
+                font_size=sp(36)
+            )
             content.add_widget(phone_input)
             
-            role_spinner = RTLSpinner(text=ROLES[0], values=ROLES, size_hint_y=None, height=dp(50))
+            # ✅ تغییر: استفاده از PersianSpinner
+            role_spinner = PersianComboBox(
+                text='مدیر',
+                values=ROLES,
+                size_hint_y=None,
+                height=dp(50)
+            )
             content.add_widget(role_spinner)
             
-            email_input = RTLTextInput(hint_text='ایمیل', multiline=False, size_hint_y=None, height=dp(50))
+            email_input = RTLTextInput(
+                hint_text='ایمیل',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(50),
+                font_size=sp(36)
+            )
             content.add_widget(email_input)
             
-            add_btn = PersianButton(text='افزودن', size_hint_y=None, height=dp(50), background_color=(0.2, 0.7, 0.2, 1))
+            
+            add_btn = PersianButton(
+                text='افزودن',
+                size_hint_y=None,
+                height=dp(45),
+                background_color=(0.2, 0.7, 0.2, 1)
+            )
             content.add_widget(add_btn)
             
+            # لیست عامل‌ها
             content.add_widget(RTLLabel(
                 text='📋 لیست عامل‌ها',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(38),
                 font_size=sp(16),
                 bold=True,
+                color=(0.2, 0.5, 0.8, 1)
             ))
             
             agents = get_agents()
+            if not agents:
+                content.add_widget(RTLLabel(
+                    text='هیچ عاملی ثبت نشده است',
+                    size_hint_y=None,
+                    height=dp(35),
+                    font_size=sp(13),
+                    color=(0.5, 0.5, 0.5, 1)
+                ))
+            
             for agent in agents:
-                agent_box = BoxLayout(size_hint_y=None, height=dp(60), spacing=dp(5))
+                agent_box = BoxLayout(
+                    size_hint_y=None,
+                    height=dp(50),
+                    spacing=dp(5),
+                    padding=[dp(5), dp(5), dp(5), dp(5)]
+                )
                 agent_info = RTLLabel(
                     text=f"{agent.get('name', '')}\n{agent.get('role', '')}",
                     size_hint_x=0.7,
+                    font_size=sp(13)
                 )
                 agent_box.add_widget(agent_info)
-                del_btn = PersianButton(text='حذف', size_hint_x=0.3, background_color=(0.8, 0.2, 0.2, 1), size_hint_y=None, height=dp(40))
+                del_btn = PersianButton(
+                    text='حذف',
+                    size_hint_x=0.3,
+                    background_color=(0.8, 0.2, 0.2, 1),
+                    size_hint_y=None,
+                    height=dp(35)
+                )
                 del_btn.bind(on_press=lambda x, a=agent: self.delete_agent_and_refresh(a.get('id')))
                 agent_box.add_widget(del_btn)
                 content.add_widget(agent_box)
@@ -1019,20 +1243,38 @@ class AdminScreen(Screen):
     
     def show_routes_tab(self):
         try:
-            layout = BoxLayout(orientation='vertical')
+            layout = BoxLayout(orientation='vertical', padding=[dp(5), dp(5), dp(5), dp(5)])
             
-            tabs = BoxLayout(size_hint_y=0.08, spacing=dp(2))
-            btn_manual = PersianButton(text='مدیریت دستی', background_color=(0.3, 0.5, 0.8, 1), size_hint_y=None, height=dp(45))
-            btn_excel = PersianButton(text='ورود از اکسل', background_color=(0.3, 0.5, 0.8, 0.6), size_hint_y=None, height=dp(45))
+            # تب‌های داخلی مسیرها
+            tabs = BoxLayout(
+                size_hint_y=None,
+                height=dp(45),
+                spacing=dp(3),
+                padding=[dp(5), dp(5), dp(5), dp(5)]
+            )
             
+            btn_manual = PersianButton(
+                text='مدیریت دستی',
+                background_color=(0.3, 0.5, 0.8, 1),
+                size_hint_y=None,
+                height=dp(40)
+            )
             btn_manual.bind(on_press=lambda x: self.show_manual_routes())
-            btn_excel.bind(on_press=lambda x: self.show_excel_routes())
-            
             tabs.add_widget(btn_manual)
+            
+            btn_excel = PersianButton(
+                text='ورود از اکسل',
+                background_color=(0.3, 0.5, 0.8, 0.6),
+                size_hint_y=None,
+                height=dp(40)
+            )
+            btn_excel.bind(on_press=lambda x: self.show_excel_routes())
             tabs.add_widget(btn_excel)
+            
             layout.add_widget(tabs)
             
-            self.routes_content = BoxLayout(orientation='vertical')
+            # محتوای مسیرها
+            self.routes_content = BoxLayout(orientation='vertical', padding=[dp(10), dp(10), dp(10), dp(10)])
             layout.add_widget(self.routes_content)
             
             self.show_manual_routes()
@@ -1045,33 +1287,57 @@ class AdminScreen(Screen):
         try:
             self.routes_content.clear_widgets()
             
-            content = GridLayout(cols=1, spacing=dp(10), size_hint_y=None, padding=dp(10))
+            content = GridLayout(
+                cols=1,
+                spacing=dp(8),
+                size_hint_y=None,
+                padding=dp(10)
+            )
             content.bind(minimum_height=content.setter('height'))
             
+            # عنوان
             content.add_widget(RTLLabel(
                 text='➕ افزودن مسیر جدید',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(38),
                 font_size=sp(16),
                 bold=True,
+                color=(0.2, 0.5, 0.8, 1)
             ))
             
-            self.route_name_input = RTLTextInput(hint_text='نام مسیر', multiline=False, size_hint_y=None, height=dp(50))
+            self.route_name_input = RTLTextInput(
+                hint_text='نام مسیر',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(50),
+                font_size=sp(36)
+            )
             content.add_widget(self.route_name_input)
             
-            add_btn = PersianButton(text='افزودن', size_hint_y=None, height=dp(50), background_color=(0.2, 0.7, 0.2, 1))
+            add_btn = PersianButton(
+                text='افزودن',
+                size_hint_y=None,
+                height=dp(45),
+                background_color=(0.2, 0.7, 0.2, 1)
+            )
             add_btn.bind(on_press=self.add_route_manual)
             content.add_widget(add_btn)
             
+            # لیست مسیرها
             content.add_widget(RTLLabel(
                 text='🗺️ لیست مسیرها',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(38),
                 font_size=sp(16),
                 bold=True,
+                color=(0.2, 0.5, 0.8, 1)
             ))
             
-            self.routes_list = GridLayout(cols=1, spacing=dp(5), size_hint_y=None)
+            self.routes_list = GridLayout(
+                cols=1,
+                spacing=dp(5),
+                size_hint_y=None
+            )
             self.routes_list.bind(minimum_height=self.routes_list.setter('height'))
             content.add_widget(self.routes_list)
             
@@ -1088,13 +1354,35 @@ class AdminScreen(Screen):
         try:
             self.routes_list.clear_widgets()
             routes = get_routes()
+            
+            if not routes:
+                self.routes_list.add_widget(RTLLabel(
+                    text='هیچ مسیری ثبت نشده است',
+                    size_hint_y=None,
+                    height=dp(35),
+                    font_size=sp(13),
+                    color=(0.5, 0.5, 0.5, 1)
+                ))
+            
             for route in routes:
-                box = BoxLayout(size_hint_y=None, height=dp(50), spacing=dp(5))
+                box = BoxLayout(
+                    size_hint_y=None,
+                    height=dp(38),
+                    spacing=dp(5),
+                    padding=[dp(5), dp(5), dp(5), dp(5)]
+                )
                 box.add_widget(RTLLabel(
                     text=route.get('name', ''),
                     size_hint_x=0.7,
+                    font_size=sp(14)
                 ))
-                del_btn = PersianButton(text='حذف', size_hint_x=0.3, background_color=(0.8, 0.2, 0.2, 1), size_hint_y=None, height=dp(40))
+                del_btn = PersianButton(
+                    text='حذف',
+                    size_hint_x=0.3,
+                    background_color=(0.8, 0.2, 0.2, 1),
+                    size_hint_y=None,
+                    height=dp(35)
+                )
                 del_btn.bind(on_press=lambda x, r=route: self.delete_route_and_refresh(r.get('id')))
                 box.add_widget(del_btn)
                 self.routes_list.add_widget(box)
@@ -1126,26 +1414,49 @@ class AdminScreen(Screen):
         try:
             self.routes_content.clear_widgets()
             
-            layout = BoxLayout(orientation='vertical', padding=dp(20), spacing=dp(15))
+            # ✅ یک BoxLayout ساده
+            layout = BoxLayout(
+                orientation='vertical',
+                padding=dp(15),
+                spacing=dp(12)
+            )
             
-            layout.add_widget(RTLLabel(
+            # ✅ عنوان با PersianLabel
+            title_label = PersianLabel(
                 text='📎 ورود مسیرها از فایل Excel',
                 font_size=sp(18),
-                bold=True,
-                size_hint_y=0.08,
-            ))
-            
-            info = RTLLabel(
-                text='فرمت فایل اکسل: ستون اول نام مسیر',
+                color=(255, 255, 255, 255),  # سفید
                 size_hint_y=None,
                 height=dp(40),
+                halign='right'
             )
-            layout.add_widget(info)
+            layout.add_widget(title_label)
             
-            self.routes_file_picker = FilePicker(size_hint_y=None, height=dp(100))
+            # ✅ متن راهنما با PersianLabel
+            info_label = PersianLabel(
+                text='فرمت فایل اکسل: ستون اول نام مسیر',
+                font_size=sp(14),
+                color=(200, 200, 200, 255),  # خاکستری روشن
+                size_hint_y=None,
+                height=dp(35),
+                halign='right'
+            )
+            layout.add_widget(info_label)
+            
+            # ✅ FilePicker بدون background_color
+            self.routes_file_picker = FilePicker(
+                size_hint_y=None,
+                height=dp(100)
+            )
             layout.add_widget(self.routes_file_picker)
             
-            import_btn = PersianButton(text='ورود به سیستم', background_color=(0.2, 0.7, 0.2, 1), size_hint_y=None, height=dp(50))
+            # ✅ دکمه با PersianButton
+            import_btn = PersianButton(
+                text='ورود به سیستم',
+                background_color=(0.2, 0.7, 0.2, 1),
+                size_hint_y=None,
+                height=dp(45)
+            )
             import_btn.bind(on_press=self.import_routes_from_excel)
             layout.add_widget(import_btn)
             
@@ -1172,20 +1483,38 @@ class AdminScreen(Screen):
     
     def show_customers_tab(self):
         try:
-            layout = BoxLayout(orientation='vertical')
+            layout = BoxLayout(orientation='vertical', padding=[dp(5), dp(5), dp(5), dp(5)])
             
-            tabs = BoxLayout(size_hint_y=0.08, spacing=dp(2))
-            btn_manual = PersianButton(text='مدیریت دستی', background_color=(0.3, 0.5, 0.8, 1), size_hint_y=None, height=dp(45))
-            btn_excel = PersianButton(text='ورود از اکسل', background_color=(0.3, 0.5, 0.8, 0.6), size_hint_y=None, height=dp(45))
+            # تب‌های داخلی مشتریان
+            tabs = BoxLayout(
+                size_hint_y=None,
+                height=dp(45),
+                spacing=dp(3),
+                padding=[dp(5), dp(5), dp(5), dp(5)]
+            )
             
+            btn_manual = PersianButton(
+                text='مدیریت دستی',
+                background_color=(0.3, 0.5, 0.8, 1),
+                size_hint_y=None,
+                height=dp(40)
+            )
             btn_manual.bind(on_press=lambda x: self.show_manual_customers())
-            btn_excel.bind(on_press=lambda x: self.show_excel_customers())
-            
             tabs.add_widget(btn_manual)
+            
+            btn_excel = PersianButton(
+                text='ورود از اکسل',
+                background_color=(0.3, 0.5, 0.8, 0.6),
+                size_hint_y=None,
+                height=dp(40)
+            )
+            btn_excel.bind(on_press=lambda x: self.show_excel_customers())
             tabs.add_widget(btn_excel)
+            
             layout.add_widget(tabs)
             
-            self.customers_content = BoxLayout(orientation='vertical')
+            # محتوای مشتریان
+            self.customers_content = BoxLayout(orientation='vertical', padding=[dp(10), dp(10), dp(10), dp(10)])
             layout.add_widget(self.customers_content)
             
             self.show_manual_customers()
@@ -1198,56 +1527,111 @@ class AdminScreen(Screen):
         try:
             self.customers_content.clear_widgets()
             
-            content = GridLayout(cols=1, spacing=dp(10), size_hint_y=None, padding=dp(10))
+            content = GridLayout(
+                cols=1,
+                spacing=dp(8),
+                size_hint_y=None,
+                padding=dp(10)
+            )
             content.bind(minimum_height=content.setter('height'))
             
+            # عنوان
             content.add_widget(RTLLabel(
                 text='➕ افزودن مشتری جدید',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(38),
                 font_size=sp(16),
                 bold=True,
+                color=(0.2, 0.5, 0.8, 1)
             ))
             
+            # انتخاب مسیر
             content.add_widget(RTLLabel(
                 text='انتخاب مسیر:',
                 size_hint_y=None,
-                height=dp(30),
+                height=dp(28),
+                font_size=sp(14)
             ))
             routes = get_routes()
             route_names = [r.get('name', '') for r in routes] if routes else ['']
-            self.customer_route_spinner = RTLSpinner(text=route_names[0] if route_names else '', values=route_names, size_hint_y=None, height=dp(50))
+            self.customer_route_spinner = RTLSpinner(
+                text=route_names[0] if route_names else '',
+                values=route_names,
+                size_hint_y=None,
+                height=dp(50)
+            )
             content.add_widget(self.customer_route_spinner)
             
-            self.customer_name_input = RTLTextInput(hint_text='نام مشتری', multiline=False, size_hint_y=None, height=dp(50))
+            # فیلدهای مشتری
+            self.customer_name_input = RTLTextInput(
+                hint_text='نام مشتری',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(50),
+                font_size=sp(36)
+            )
             content.add_widget(self.customer_name_input)
             
-            self.customer_store_input = RTLTextInput(hint_text='نام فروشگاه', multiline=False, size_hint_y=None, height=dp(50))
+            self.customer_store_input = RTLTextInput(
+                hint_text='نام فروشگاه',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(50),
+                font_size=sp(36)
+            )
             content.add_widget(self.customer_store_input)
             
-            self.customer_mobile_input = RTLTextInput(hint_text='موبایل', multiline=False, size_hint_y=None, height=dp(50))
+            self.customer_mobile_input = RTLTextInput(
+                hint_text='موبایل',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(50),
+                font_size=sp(36)
+            )
             content.add_widget(self.customer_mobile_input)
             
-            self.customer_address_input = RTLTextInput(hint_text='آدرس', multiline=False, size_hint_y=None, height=dp(50))
+            self.customer_address_input = RTLTextInput(
+                hint_text='آدرس',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(50),
+                font_size=sp(36)
+            )
             content.add_widget(self.customer_address_input)
             
-            add_btn = PersianButton(text='افزودن مشتری', size_hint_y=None, height=dp(50), background_color=(0.2, 0.7, 0.2, 1))
+            add_btn = PersianButton(
+                text='افزودن مشتری',
+                size_hint_y=None,
+                height=dp(45),
+                background_color=(0.2, 0.7, 0.2, 1)
+            )
             add_btn.bind(on_press=self.add_customer_manual)
             content.add_widget(add_btn)
             
+            # لیست مشتریان
             content.add_widget(RTLLabel(
                 text='📞 لیست مشتریان',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(38),
                 font_size=sp(16),
                 bold=True,
+                color=(0.2, 0.5, 0.8, 1)
             ))
             
-            self.customers_list = GridLayout(cols=1, spacing=dp(5), size_hint_y=None)
+            self.customers_list = GridLayout(
+                cols=1,
+                spacing=dp(5),
+                size_hint_y=None
+            )
             self.customers_list.bind(minimum_height=self.customers_list.setter('height'))
             content.add_widget(self.customers_list)
             
-            filter_btn = PersianButton(text='نمایش مشتریان این مسیر', size_hint_y=None, height=dp(40), background_color=(0.4, 0.5, 0.6, 1))
+            filter_btn = PersianButton(
+                text='نمایش مشتریان این مسیر',
+                size_hint_y=None,
+                height=dp(40),
+                background_color=(0.4, 0.5, 0.6, 1)
+            )
             filter_btn.bind(on_press=self.refresh_customers_list)
             content.add_widget(filter_btn)
             
@@ -1273,18 +1657,32 @@ class AdminScreen(Screen):
                 self.customers_list.add_widget(RTLLabel(
                     text='هیچ مشتری در این مسیر وجود ندارد',
                     size_hint_y=None,
-                    height=dp(40),
+                    height=dp(35),
+                    font_size=sp(13),
+                    color=(0.5, 0.5, 0.5, 1)
                 ))
                 return
             
             for customer in filtered:
-                box = BoxLayout(size_hint_y=None, height=dp(60), spacing=dp(5))
+                box = BoxLayout(
+                    size_hint_y=None,
+                    height=dp(50),
+                    spacing=dp(5),
+                    padding=[dp(5), dp(5), dp(5), dp(5)]
+                )
                 info = f"{customer.get('name', '')}\n{customer.get('store_name', '')}\n{customer.get('mobile', '')}"
                 box.add_widget(RTLLabel(
                     text=info,
                     size_hint_x=0.7,
+                    font_size=sp(12)
                 ))
-                del_btn = PersianButton(text='حذف', size_hint_x=0.3, background_color=(0.8, 0.2, 0.2, 1), size_hint_y=None, height=dp(40))
+                del_btn = PersianButton(
+                    text='حذف',
+                    size_hint_x=0.3,
+                    background_color=(0.8, 0.2, 0.2, 1),
+                    size_hint_y=None,
+                    height=dp(35)
+                )
                 del_btn.bind(on_press=lambda x, c=customer: self.delete_customer_and_refresh(c.get('id')))
                 box.add_widget(del_btn)
                 self.customers_list.add_widget(box)
@@ -1341,26 +1739,49 @@ class AdminScreen(Screen):
         try:
             self.customers_content.clear_widgets()
             
-            layout = BoxLayout(orientation='vertical', padding=dp(20), spacing=dp(15))
+            # ✅ یک BoxLayout ساده
+            layout = BoxLayout(
+                orientation='vertical',
+                padding=dp(15),
+                spacing=dp(12)
+            )
             
-            layout.add_widget(RTLLabel(
+            # ✅ عنوان با PersianLabel
+            title_label = PersianLabel(
                 text='📎 ورود مشتریان از فایل Excel',
                 font_size=sp(18),
-                bold=True,
-                size_hint_y=0.08,
-            ))
-            
-            info = RTLLabel(
-                text='فرمت فایل اکسل: name, store_name, route_name, mobile, address',
+                color=(255, 255, 255, 255),  # سفید
                 size_hint_y=None,
                 height=dp(40),
+                halign='right'
             )
-            layout.add_widget(info)
+            layout.add_widget(title_label)
             
-            self.customers_file_picker = FilePicker(size_hint_y=None, height=dp(100))
+            # ✅ متن راهنما با PersianLabel
+            info_label = PersianLabel(
+                text='فرمت فایل اکسل: name, store_name, route_name, mobile, address',
+                font_size=sp(14),
+                color=(200, 200, 200, 255),  # خاکستری روشن
+                size_hint_y=None,
+                height=dp(35),
+                halign='right'
+            )
+            layout.add_widget(info_label)
+            
+            # ✅ FilePicker بدون background_color
+            self.customers_file_picker = FilePicker(
+                size_hint_y=None,
+                height=dp(100)
+            )
             layout.add_widget(self.customers_file_picker)
             
-            import_btn = PersianButton(text='ورود به سیستم', background_color=(0.2, 0.7, 0.2, 1), size_hint_y=None, height=dp(50))
+            # ✅ دکمه با PersianButton
+            import_btn = PersianButton(
+                text='ورود به سیستم',
+                background_color=(0.2, 0.7, 0.2, 1),
+                size_hint_y=None,
+                height=dp(45)
+            )
             import_btn.bind(on_press=self.import_customers_from_excel)
             layout.add_widget(import_btn)
             
@@ -1388,28 +1809,27 @@ class AdminScreen(Screen):
     def show_settings_tab(self):
         try:
             settings = get_settings()
-            routes = get_routes()
-            customers = get_customers()
-            
-            route_names = [r.get('name', '') for r in routes] if routes else ['']
-            customer_names = [c.get('name', '') for c in customers] if customers else ['']
             
             layout = ScrollView()
-            content = GridLayout(cols=2, spacing=dp(10), size_hint_y=None, padding=dp(10))
+            content = GridLayout(
+                cols=2,
+                spacing=dp(8),
+                size_hint_y=None,
+                padding=dp(10)
+            )
             content.bind(minimum_height=content.setter('height'))
             
             fields = [
                 ('supervision_rate', 'درصد سرکشی به مشتری', '0.3', 'float'),
                 ('conversion_rate', 'نرخ تبدیل سرکشی به فاکتور', '0.25', 'float'),
-                ('avg_invoice_amount', 'میانگین مبلغ فاکتور استاندارد', '1000000', 'int'),
+                ('avg_invoice_amount', 'میانگین مبلغ فاکتور', '1000000', 'int'),
                 ('target_amount', 'مبلغ تارگت ریالی', '50000000', 'int'),
                 ('target_count', 'میزان تارگت تعدادی', '100', 'int'),
                 ('target_invoice_count', 'میزان تارگت تعداد فاکتور', '20', 'int'),
                 ('target_customer_count', 'میزان تارگت تعداد مشتری', '50', 'int'),
                 ('target_new_customer_count', 'میزان تارگت مشتری جدید', '10', 'int'),
-                ('target_cash_sales', 'تارگت فروش و وصول نقدی', '30000000', 'int'),
-                ('target_credit_sales', 'تارگت فروش و وصول غیر نقدی', '20000000', 'int'),
-                ('first_customer_of_route', 'اولین مشتری مسیر روز', settings.get('first_customer_of_route', ''), 'spinner_customer', customer_names),
+                ('target_cash_sales', 'تارگت فروش نقدی', '30000000', 'int'),
+                ('target_credit_sales', 'تارگت فروش غیر نقدی', '20000000', 'int'),
                 ('work_start_time', 'ساعت شروع به کار', '08:00', 'time'),
                 ('first_visit_time', 'ساعت اولین ویزیت', '09:00', 'time'),
                 ('min_daily_hours', 'حداقل ساعت کاری روزانه', '6', 'int'),
@@ -1422,36 +1842,63 @@ class AdminScreen(Screen):
                 default = item[2]
                 field_type = item[3]
                 
+                # لیبل
                 content.add_widget(RTLLabel(
                     text=label + ':',
                     size_hint_y=None,
-                    height=dp(45),
+                    height=dp(38),
+                    font_size=sp(14)
                 ))
                 
+                # فیلد
+                value = settings.get(key, default)
                 if field_type == 'float':
-                    value = settings.get(key, default)
-                    input_field = RTLTextInput(text=str(value), multiline=False, size_hint_y=None, height=dp(50), input_filter='float')
+                    input_field = RTLTextInput(
+                        text=str(value),
+                        multiline=False,
+                        size_hint_y=None,
+                        height=dp(50),
+                        input_filter='float',
+                        font_size=sp(36)
+                    )
                 elif field_type == 'int':
-                    value = settings.get(key, default)
-                    input_field = RTLTextInput(text=str(value), multiline=False, size_hint_y=None, height=dp(50), input_filter='int')
+                    input_field = RTLTextInput(
+                        text=str(value),
+                        multiline=False,
+                        size_hint_y=None,
+                        height=dp(50),
+                        input_filter='int',
+                        font_size=sp(36)
+                    )
                 elif field_type == 'time':
-                    value = settings.get(key, default)
-                    input_field = RTLTextInput(text=value, multiline=False, size_hint_y=None, height=dp(50), hint_text='HH:MM')
-                elif field_type == 'spinner_customer':
-                    values = item[4] if len(item) > 4 else ['']
-                    value = settings.get(key, default)
-                    input_field = RTLSpinner(text=value if value else (values[0] if values else ''), 
-                                            values=values, size_hint_y=None, height=dp(50))
+                    input_field = RTLTextInput(
+                        text=value,
+                        multiline=False,
+                        size_hint_y=None,
+                        height=dp(50),
+                        hint_text='HH:MM',
+                        font_size=sp(36)
+                    )
                 else:
-                    value = settings.get(key, default)
-                    input_field = RTLTextInput(text=str(value), multiline=False, size_hint_y=None, height=dp(50))
+                    input_field = RTLTextInput(
+                        text=str(value),
+                        multiline=False,
+                        size_hint_y=None,
+                        height=dp(50),
+                        font_size=sp(36)
+                    )
                 
                 content.add_widget(input_field)
                 inputs[key] = input_field
             
-            content.add_widget(Label(size_hint_y=None, height=dp(10)))
-            
-            save_btn = PersianButton(text='ذخیره تنظیمات', size_hint_y=None, height=dp(50), background_color=(0.2, 0.6, 1, 1), size_hint_x=0.5)
+            # دکمه ذخیره
+            save_btn = PersianButton(
+                text='ذخیره تنظیمات',
+                size_hint_y=None,
+                height=dp(45),
+                background_color=(0.2, 0.6, 1, 1),
+                size_hint_x=0.5
+            )
             save_btn.bind(on_press=lambda x: self.save_settings(inputs))
             content.add_widget(save_btn)
             
@@ -1479,7 +1926,7 @@ class AdminScreen(Screen):
                         value = int(value)
                     except:
                         value = 0
-                elif key in ['work_start_time', 'first_visit_time', 'first_customer_of_route']:
+                elif key in ['work_start_time', 'first_visit_time']:
                     pass
                 
                 settings[key] = value
@@ -1496,9 +1943,14 @@ class AdminScreen(Screen):
             content.add_widget(RTLLabel(
                 text=message,
                 size_hint_y=None,
-                height=dp(50),
+                height=dp(45),
+                font_size=sp(16)
             ))
-            btn = PersianButton(text='باشه', size_hint_y=None, height=dp(40))
+            btn = PersianButton(
+                text='باشه',
+                size_hint_y=None,
+                height=dp(40)
+            )
             content.add_widget(btn)
             popup = Popup(title=title, content=content, size_hint=(0.8, 0.35))
             btn.bind(on_press=popup.dismiss)
@@ -1510,12 +1962,12 @@ class AdminScreen(Screen):
     def logout(self, instance):
         self.manager.current = 'login'
 
-
 class UserScreen(Screen):
     def __init__(self, **kwargs):
         try:
             super().__init__(**kwargs)
             self.settings = get_settings()
+            self._last_route_text = ''
             self.build_ui()
         except Exception as e:
             error_details = traceback.format_exc()
@@ -1524,16 +1976,17 @@ class UserScreen(Screen):
     
     def build_ui(self):
         try:
-            layout = BoxLayout(orientation='vertical')
+            layout = BoxLayout(orientation='vertical', padding=[dp(5), dp(5), dp(5), dp(5)])
             
-            header = RTLLabel(
-                text='ثبت ویزیت روزانه',
-                size_hint_y=0.07,
-                font_size=sp(20),
+            # ❌ هدر حذف شد
+            
+            # ========== فرم ==========
+            self.form_layout = GridLayout(
+                cols=3,
+                spacing=dp(4),
+                size_hint_y=None,
+                padding=dp(5)
             )
-            layout.add_widget(header)
-            
-            self.form_layout = GridLayout(cols=3, spacing=dp(8), size_hint_y=None, padding=dp(10))
             self.form_layout.bind(minimum_height=self.form_layout.setter('height'))
             
             routes = get_routes()
@@ -1542,170 +1995,264 @@ class UserScreen(Screen):
             customers = get_customers()
             self.all_customer_names = [c.get('name', '') for c in customers] if customers else ['']
             
-            # هدرها
+            # ========== هدرها ==========
             self.form_layout.add_widget(RTLLabel(
                 text='آیتم',
                 size_hint_y=None,
-                height=dp(35),
+                height=dp(30),
                 bold=True,
                 color=(0.2, 0.5, 0.8, 1),
+                font_size=sp(15)
             ))
             self.form_layout.add_widget(RTLLabel(
                 text='مقدار',
                 size_hint_y=None,
-                height=dp(35),
+                height=dp(30),
                 bold=True,
                 color=(0.2, 0.5, 0.8, 1),
+                font_size=sp(15)
             ))
             self.form_layout.add_widget(RTLLabel(
                 text='هدف',
                 size_hint_y=None,
-                height=dp(35),
+                height=dp(30),
                 bold=True,
                 color=(0.2, 0.5, 0.8, 1),
+                font_size=sp(15)
             ))
             
             self.inputs = {}
             
-            # تاریخ
+            # ========== تاریخ ویزیت ==========
             self.form_layout.add_widget(RTLLabel(
                 text='تاریخ ویزیت',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
+                font_size=sp(14)
             ))
-            visit_date = RTLTextInput(text=get_today_jalali(), multiline=False, size_hint_y=None, height=dp(40))
+            visit_date = RTLTextInput(
+                text=get_today_jalali(),
+                multiline=False,
+                size_hint_y=None,
+                height=dp(40),
+                font_size=sp(32)  # ✅ بزرگتر
+            )
             self.form_layout.add_widget(visit_date)
             self.form_layout.add_widget(RTLLabel(
                 text='---',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
                 color=(0.5, 0.5, 0.5, 1),
+                font_size=sp(14)
             ))
             self.inputs['visit_date'] = visit_date
             
-            # مسیر
+            # ========== مسیر ویزیت ==========
             self.form_layout.add_widget(RTLLabel(
                 text='مسیر ویزیت',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
+                font_size=sp(14)
             ))
-            self.route_spinner = RTLSpinner(text=self.route_names[0] if self.route_names else '', values=self.route_names, size_hint_y=None, height=dp(40))
-            self.route_spinner.bind(text=self.on_route_change)
+            
+            # ✅ PersianComboBox با رنگ‌های مشخص
+            self.route_spinner = PersianComboBox(
+                text=self.route_names[0] if self.route_names else '',
+                values=self.route_names,
+                height=dp(40)
+            )
+            # تنظیم رنگ دکمه اصلی
+            self.route_spinner.main_btn.background_color = (1, 1, 1, 1)  # سفید
+            self.route_spinner.main_btn.color = (0, 0, 0, 1)  # ✅ متن مشکی
+            self.route_spinner.main_btn.font_size = sp(18)  # ✅ فونت بزرگ
+            
             self.form_layout.add_widget(self.route_spinner)
+            
             self.route_customers_target = RTLLabel(
                 text='0',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
                 color=(0.6, 0.4, 0.2, 1),
+                font_size=sp(14)
             )
             self.form_layout.add_widget(self.route_customers_target)
             self.inputs['route_name'] = self.route_spinner
             
-            # ساعت شروع
+            # ✅ نظارت بر تغییرات مسیر با Clock
+            self._last_route_text = self.route_spinner.text
+            Clock.schedule_interval(self._check_route_change, 0.3)
+            
+            # ========== ساعت شروع کار ==========
             self.form_layout.add_widget(RTLLabel(
                 text='ساعت شروع کار',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
+                font_size=sp(14)
             ))
-            clock_in = RTLTextInput(text=get_current_time(), multiline=False, size_hint_y=None, height=dp(40))
+            clock_in = RTLTextInput(
+                text=get_current_time(),
+                multiline=False,
+                size_hint_y=None,
+                height=dp(40),
+                font_size=sp(32)
+            )
             self.form_layout.add_widget(clock_in)
             self.form_layout.add_widget(RTLLabel(
                 text=self.settings.get('work_start_time', '08:00'),
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
                 color=(0.6, 0.4, 0.2, 1),
+                font_size=sp(14)
             ))
             self.inputs['clock_in'] = clock_in
             
-            # ساعت اولین ویزیت
+            # ========== ساعت اولین ویزیت ==========
             self.form_layout.add_widget(RTLLabel(
                 text='ساعت اولین ویزیت',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
+                font_size=sp(14)
             ))
-            first_visit_time = RTLTextInput(text='', multiline=False, size_hint_y=None, height=dp(40))
+            first_visit_time = RTLTextInput(
+                text='',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(40),
+                font_size=sp(32)
+            )
             self.form_layout.add_widget(first_visit_time)
             self.form_layout.add_widget(RTLLabel(
                 text=self.settings.get('first_visit_time', '09:00'),
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
                 color=(0.6, 0.4, 0.2, 1),
+                font_size=sp(14)
             ))
             self.inputs['first_visit_time'] = first_visit_time
             
-            # اولین مشتری
+            # ========== اولین مشتری ==========
             self.form_layout.add_widget(RTLLabel(
                 text='اولین مشتری',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
+                font_size=sp(14)
             ))
-            self.first_customer_spinner = RTLSpinner(text='', values=self.all_customer_names, size_hint_y=None, height=dp(40))
+            
+            # ✅ PersianComboBox با رنگ‌های مشخص
+            self.first_customer_spinner = PersianComboBox(
+                text='',
+                values=self.all_customer_names,
+                height=dp(40)
+            )
+            # تنظیم رنگ دکمه اصلی
+            self.first_customer_spinner.main_btn.background_color = (1, 1, 1, 1)  # سفید
+            self.first_customer_spinner.main_btn.color = (0, 0, 0, 1)  # ✅ متن مشکی
+            self.first_customer_spinner.main_btn.font_size = sp(18)  # ✅ فونت بزرگ
+            
             self.form_layout.add_widget(self.first_customer_spinner)
+            
             self.first_customer_target = RTLLabel(
                 text=self.settings.get('first_customer_of_route', 'تعیین نشده'),
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
                 color=(0.6, 0.4, 0.2, 1),
+                font_size=sp(14)
             )
             self.form_layout.add_widget(self.first_customer_target)
             self.inputs['first_customer'] = self.first_customer_spinner
             
-            # تعداد مشتری ویزیت شده
+            # ========== تعداد مشتری ویزیت شده ==========
             self.form_layout.add_widget(RTLLabel(
                 text='تعداد مشتری ویزیت شده',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
+                font_size=sp(14)
             ))
-            visited_count = RTLTextInput(text='0', multiline=False, size_hint_y=None, height=dp(40), input_filter='int')
+            visited_count = RTLTextInput(
+                text='0',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(40),
+                input_filter='int',
+                font_size=sp(32)
+            )
             self.form_layout.add_widget(visited_count)
+            
             self.visited_customers_target = RTLLabel(
                 text='0',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
                 color=(0.6, 0.4, 0.2, 1),
+                font_size=sp(14)
             )
             self.form_layout.add_widget(self.visited_customers_target)
             self.inputs['visited_customers_count'] = visited_count
             
-            # تعداد فاکتور موفق
+            # ========== تعداد فاکتور موفق ==========
             self.form_layout.add_widget(RTLLabel(
                 text='تعداد فاکتور موفق',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
+                font_size=sp(14)
             ))
-            invoices_count = RTLTextInput(text='0', multiline=False, size_hint_y=None, height=dp(40), input_filter='int')
+            invoices_count = RTLTextInput(
+                text='0',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(40),
+                input_filter='int',
+                font_size=sp(32)
+            )
             self.form_layout.add_widget(invoices_count)
             self.form_layout.add_widget(RTLLabel(
                 text=str(self.settings.get('target_invoice_count', '20')),
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
                 color=(0.6, 0.4, 0.2, 1),
+                font_size=sp(14)
             ))
             self.inputs['successful_invoices_count'] = invoices_count
             
-            # تعداد واحد فروش موفق
+            # ========== تعداد واحد فروش موفق ==========
             self.form_layout.add_widget(RTLLabel(
                 text='تعداد واحد فروش موفق',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
+                font_size=sp(14)
             ))
-            units_count = RTLTextInput(text='0', multiline=False, size_hint_y=None, height=dp(40), input_filter='int')
+            units_count = RTLTextInput(
+                text='0',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(40),
+                input_filter='int',
+                font_size=sp(32)
+            )
             self.form_layout.add_widget(units_count)
             self.form_layout.add_widget(RTLLabel(
                 text=str(self.settings.get('target_count', '100')),
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
                 color=(0.6, 0.4, 0.2, 1),
+                font_size=sp(14)
             ))
             self.inputs['successful_units_count'] = units_count
             
-            # مبلغ فروش موفق
+            # ========== مبلغ فروش موفق ==========
             self.form_layout.add_widget(RTLLabel(
                 text='مبلغ فروش موفق',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
+                font_size=sp(14)
             ))
-            sales_amount = RTLTextInput(text='0', multiline=False, size_hint_y=None, height=dp(40), input_filter='int')
+            sales_amount = RTLTextInput(
+                text='0',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(40),
+                input_filter='int',
+                font_size=sp(32)
+            )
             self.form_layout.add_widget(sales_amount)
             
             target_amount = self.settings.get('target_amount', 50000000)
@@ -1716,58 +2263,97 @@ class UserScreen(Screen):
             self.form_layout.add_widget(RTLLabel(
                 text="{:,}".format(target_amount),
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
                 color=(0.6, 0.4, 0.2, 1),
+                font_size=sp(14)
             ))
             self.inputs['successful_sales_amount'] = sales_amount
             
-            # ساعت آخرین ویزیت
+            # ========== ساعت آخرین ویزیت ==========
             self.form_layout.add_widget(RTLLabel(
                 text='ساعت آخرین ویزیت',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
+                font_size=sp(14)
             ))
-            last_visit_time = RTLTextInput(text='', multiline=False, size_hint_y=None, height=dp(40))
+            last_visit_time = RTLTextInput(
+                text='',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(40),
+                font_size=sp(32)
+            )
             self.form_layout.add_widget(last_visit_time)
             self.form_layout.add_widget(RTLLabel(
                 text='---',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
                 color=(0.5, 0.5, 0.5, 1),
+                font_size=sp(14)
             ))
             self.inputs['last_visit_time'] = last_visit_time
             
-            # ساعت پایان کار
+            # ========== ساعت پایان کار ==========
             self.form_layout.add_widget(RTLLabel(
                 text='ساعت پایان کار',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
+                font_size=sp(14)
             ))
-            clock_out = RTLTextInput(text='', multiline=False, size_hint_y=None, height=dp(40))
+            clock_out = RTLTextInput(
+                text='',
+                multiline=False,
+                size_hint_y=None,
+                height=dp(40),
+                font_size=sp(32)
+            )
             self.form_layout.add_widget(clock_out)
             self.form_layout.add_widget(RTLLabel(
                 text='---',
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(35),
                 color=(0.5, 0.5, 0.5, 1),
+                font_size=sp(14)
             ))
             self.inputs['clock_out'] = clock_out
             
+            # ========== ScrollView ==========
             form_scroll = ScrollView()
             form_scroll.add_widget(self.form_layout)
             layout.add_widget(form_scroll)
             
-            btn_layout = BoxLayout(size_hint_y=0.09, spacing=dp(10), padding=dp(10))
+            # ========== دکمه‌ها ==========
+            btn_layout = BoxLayout(
+                size_hint_y=None,
+                height=dp(42),
+                spacing=dp(5),
+                padding=dp(5)
+            )
             
-            save_btn = PersianButton(text='💾 ذخیره', background_color=(0.2, 0.7, 0.2, 1), size_hint_y=None, height=dp(50))
+            save_btn = PersianButton(
+                text='💾 ذخیره',
+                background_color=(0.2, 0.7, 0.2, 1),
+                size_hint_y=None,
+                height=dp(38)
+            )
             save_btn.bind(on_press=self.save_log)
             btn_layout.add_widget(save_btn)
             
-            report_btn = PersianButton(text='📊 گزارش', background_color=(0.2, 0.6, 1, 1), size_hint_y=None, height=dp(50))
+            report_btn = PersianButton(
+                text='📊 گزارش',
+                background_color=(0.2, 0.6, 1, 1),
+                size_hint_y=None,
+                height=dp(38)
+            )
             report_btn.bind(on_press=self.go_to_report)
             btn_layout.add_widget(report_btn)
             
-            logout_btn = PersianButton(text='🚪 خروج', background_color=(0.8, 0.2, 0.2, 1), size_hint_y=None, height=dp(50))
+            logout_btn = PersianButton(
+                text='🚪 خروج',
+                background_color=(0.8, 0.2, 0.2, 1),
+                size_hint_y=None,
+                height=dp(38)
+            )
             logout_btn.bind(on_press=self.logout)
             btn_layout.add_widget(logout_btn)
             
@@ -1780,7 +2366,20 @@ class UserScreen(Screen):
             ErrorPopup.show_error(f"خطا در ساخت UI UserScreen: {e}", error_details)
             raise
     
+    def _check_route_change(self, dt):
+        """بررسی تغییرات مسیر با Clock"""
+        if hasattr(self, 'route_spinner'):
+            current_text = self.route_spinner.text
+            if current_text != self._last_route_text:
+                self._last_route_text = current_text
+                self.on_route_change(self.route_spinner, current_text)
+    
+    def on_route_change(self, spinner, text):
+        """وقتی مسیر تغییر میکنه"""
+        self.update_route_info()
+    
     def update_route_info(self):
+        """به‌روزرسانی اطلاعات مسیر"""
         try:
             current_route = self.route_spinner.text
             
@@ -2163,38 +2762,49 @@ class SettingsLoginScreen(Screen):
     
     def build_ui(self):
         try:
-            layout = BoxLayout(orientation='vertical', spacing=dp(20), padding=dp(40))
+            layout = BoxLayout(orientation='vertical', padding=dp(30), spacing=dp(8))
             
+            # ========== فاصله ۲ سانت از بالا ==========
+            layout.add_widget(Label(size_hint_y=None, height=dp(20)))
+            
+            # ========== عنوان ==========
             title = RTLLabel(
                 text='ورود به تنظیمات سیستم',
                 font_size=sp(24),
-                size_hint_y=0.15,
+                size_hint_y=None,
+                height=dp(45)
             )
             layout.add_widget(title)
             
-            info_text = f'[size=14][color=666666]ایمیل مدیر: {ADMIN_EMAIL}\nرمز پیش‌فرض: admin123[/color][/size]'
-            email_info = RTLLabel(
-                text=info_text,
-                markup=True,
-                size_hint_y=0.15,
-            )
-            layout.add_widget(email_info)
+            # ========== فاصله ۳ میلیمتر ==========
+            layout.add_widget(Label(size_hint_y=None, height=dp(3)))
             
+            # ========== فیلد رمز مدیر (ارتفاع ۱ سانت) ==========
             self.password_input = RTLTextInput(
                 hint_text='رمز عبور مدیر',
                 password=True,
                 multiline=False,
                 size_hint_y=None,
-                height=dp(55)
+                height=dp(40),
+                font_size=sp(36)
             )
             layout.add_widget(self.password_input)
             
-            btn_layout = BoxLayout(spacing=dp(10), size_hint_y=None, height=dp(55))
+            # ========== فاصله ۳ میلیمتر ==========
+            layout.add_widget(Label(size_hint_y=None, height=dp(3)))
+            
+            # ========== دکمه‌ها (کنار هم) ==========
+            btn_layout = BoxLayout(
+                spacing=dp(5),
+                size_hint_y=None,
+                height=dp(42)
+            )
+            
             login_btn = PersianButton(
                 text='ورود',
                 background_color=(0.2, 0.6, 1, 1),
                 size_hint_y=None,
-                height=dp(50)
+                height=dp(38)
             )
             login_btn.bind(on_press=self.check_login)
             btn_layout.add_widget(login_btn)
@@ -2203,21 +2813,14 @@ class SettingsLoginScreen(Screen):
                 text='بازگشت',
                 background_color=(0.5, 0.5, 0.5, 1),
                 size_hint_y=None,
-                height=dp(50)
+                height=dp(38)
             )
             back_btn.bind(on_press=self.go_back)
             btn_layout.add_widget(back_btn)
             
             layout.add_widget(btn_layout)
             
-            reset_btn = PersianButton(
-                text='🔄 تنظیم مجدد رمز (admin123)',
-                size_hint_y=None,
-                height=dp(40),
-                background_color=(0.8, 0.5, 0.2, 0.8)
-            )
-            reset_btn.bind(on_press=self.reset_password)
-            layout.add_widget(reset_btn)
+            # ❌ دکمه تنظیم مجدد رمز حذف شد (امنیت)
             
             self.add_widget(layout)
         except Exception as e:
