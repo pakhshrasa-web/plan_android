@@ -271,7 +271,7 @@ class PersianComboBox(BoxLayout):
         self.spacing = dp(2)
         self.padding = [dp(2), dp(2), dp(2), dp(2)]
         
-        # ✅ دکمه اصلی با متن تبدیل شده
+        # ✅ دکمه اصلی
         self.main_btn = Button(
             text=fix_persian_text(self._text),
             font_name='PersianFont',
@@ -316,64 +316,37 @@ class PersianComboBox(BoxLayout):
         self.add_widget(self.main_btn)
         self.add_widget(self.arrow)
         
-        # ✅ لیست observerها برای رویداد text
+        # observerها
         self._text_observers = []
-        
-        # ✅ برای تشخیص تغییرات text
         self._last_text = self._text
         Clock.schedule_interval(self._check_text_change, 0.1)
-    
-    def _check_text_change(self, dt):
-        """بررسی تغییرات text"""
-        current = self.main_btn.text
-        if current != self._last_text:
-            self._last_text = current
-            # اطلاع‌رسانی به observerها
-            for callback in self._text_observers:
-                try:
-                    callback(self, current)
-                except Exception as e:
-                    print(f"⚠️ خطا در callback: {e}")
-    
-    def _update_rect(self, *args):
-        self.bg.pos = self.main_btn.pos
-        self.bg.size = self.main_btn.size
-        self.border.pos = (self.main_btn.x + 2, self.main_btn.y + 2)
-        self.border.size = (self.main_btn.width - 4, self.main_btn.height - 4)
-    
-    def _open_popup(self, instance):
-        content = BoxLayout(
-            orientation='vertical',
-            padding=dp(10),
-            spacing=dp(5)
-        )
         
-        # عنوان
-        title = Label(
-            text=fix_persian_text('انتخاب کنید'),
-            font_name='PersianFont',
-            font_size=sp(16),
-            color=(0, 0, 0, 1),
-            size_hint_y=None,
-            height=dp(35),
-            halign='center',
-            valign='middle'
-        )
-        content.add_widget(title)
+        # ✅ ایجاد dropdown
+        self._dropdown = None
+        Clock.schedule_once(self._init_dropdown, 0.1)
+    
+    def _init_dropdown(self, dt):
+        """ایجاد dropdown"""
+        from kivy.uix.dropdown import DropDown
+        self._dropdown = DropDown()
+        self._dropdown.background_color = (1, 1, 1, 1)
+        self._dropdown.background_normal = ''
+        self._dropdown.auto_width = False
+        self._dropdown.width = dp(280)
+        self._dropdown.size_hint_x = None
+        self._dropdown.max_height = dp(350)
+        self._rebuild_dropdown(0)
+    
+    def _rebuild_dropdown(self, dt):
+        """بازسازی dropdown با مقادیر جدید"""
+        if not hasattr(self, '_dropdown') or not self._dropdown:
+            return
         
-        # لیست آیتم‌ها
-        scroll = ScrollView(size_hint=(1, 1))
-        list_layout = GridLayout(
-            cols=1,
-            spacing=dp(3),
-            size_hint_y=None,
-            padding=dp(5)
-        )
-        list_layout.bind(minimum_height=list_layout.setter('height'))
+        self._dropdown.clear_widgets()
         
-        for value in self._values:
+        for val in self._values:
             btn = Button(
-                text=fix_persian_text(value),
+                text=fix_persian_text(val),
                 font_name='PersianFont',
                 font_size=sp(18),
                 halign='right',
@@ -393,52 +366,45 @@ class PersianComboBox(BoxLayout):
                 b.background_color = (0.92, 0.92, 0.92, 1)
             
             btn.bind(on_enter=on_enter, on_leave=on_leave)
-            btn.bind(on_release=lambda b, val=value: self._select_value(val, popup))
+            btn.bind(on_release=lambda b, v=val: self._select_value(v, self._dropdown))
             
-            list_layout.add_widget(btn)
-        
-        scroll.add_widget(list_layout)
-        content.add_widget(scroll)
-        
-        # دکمه بستن
-        close_btn = Button(
-            text=fix_persian_text('بستن'),
-            font_name='PersianFont',
-            font_size=sp(16),
-            size_hint_y=None,
-            height=dp(40),
-            background_normal='',
-            background_color=(0.8, 0.2, 0.2, 1),
-            color=(1, 1, 1, 1)
-        )
-        close_btn.bind(on_release=lambda x: popup.dismiss())
-        content.add_widget(close_btn)
-        
-        popup = Popup(
-            title='',
-            content=content,
-            size_hint=(0.85, 0.6),
-            auto_dismiss=True,
-            background_color=(1, 1, 1, 1)
-        )
-        
-        popup.open()
+            self._dropdown.add_widget(btn)
+    
+    def _check_text_change(self, dt):
+        """بررسی تغییرات text"""
+        current = self.main_btn.text
+        if current != self._last_text:
+            self._last_text = current
+            for callback in self._text_observers:
+                try:
+                    callback(self, current)
+                except Exception as e:
+                    print(f"⚠️ خطا در callback: {e}")
+    
+    def _update_rect(self, *args):
+        self.bg.pos = self.main_btn.pos
+        self.bg.size = self.main_btn.size
+        self.border.pos = (self.main_btn.x + 2, self.main_btn.y + 2)
+        self.border.size = (self.main_btn.width - 4, self.main_btn.height - 4)
+    
+    def _open_popup(self, instance):
+        if not self._dropdown:
+            return
+        # ✅ بازسازی dropdown قبل از باز کردن
+        self._rebuild_dropdown(0)
+        self._dropdown.open(self)
     
     def _select_value(self, value, popup):
         self.main_btn.text = fix_persian_text(value)
+        self._text = value
         popup.dismiss()
     
-    # ============================================
-    # ✅ پشتیبانی از bind
-    # ============================================
     def bind(self, **kwargs):
-        """پشتیبانی از bind برای text"""
         if 'text' in kwargs:
             self._text_observers.append(kwargs['text'])
         return super().bind(**kwargs)
     
     def unbind(self, **kwargs):
-        """لغو bind"""
         if 'text' in kwargs:
             callback = kwargs['text']
             if callback in self._text_observers:
@@ -461,6 +427,9 @@ class PersianComboBox(BoxLayout):
     @values.setter
     def values(self, value):
         self._values = value
+        # ✅ بازسازی dropdown
+        if hasattr(self, '_dropdown') and self._dropdown:
+            Clock.schedule_once(self._rebuild_dropdown, 0.1)
 
 
 # ============================================================
