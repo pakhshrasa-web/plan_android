@@ -63,7 +63,7 @@ jobs:
         source.include_exts = py,png,jpg,kv,atlas,ttf,json
         version = 0.1
 
-        # ✅ اضافه کردن plyer و حذف jdatetime
+        # ✅ jdatetime حذف شد - plyer اضافه شد
         requirements = python3,kivy,openpyxl,plyer,arabic-reshaper,python-bidi,requests,Pillow
 
         orientation = portrait
@@ -97,7 +97,6 @@ jobs:
 
     - name: Create initial json files
       run: |
-        # ✅ ایجاد فایل‌های JSON اولیه برای برنامه
         mkdir -p data
         
         cat > data/definitions.json << 'EOF'
@@ -143,7 +142,6 @@ jobs:
         echo "📁 بررسی فایل‌ها قبل از کپی:"
         ls -la fonts/ || echo "⚠️ پوشه fonts وجود ندارد"
         
-        # ✅ کپی فونت‌ها به مسیر درست
         mkdir -p .buildozer/android/app/fonts
         mkdir -p .buildozer/android/app/data
         
