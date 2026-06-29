@@ -22,7 +22,7 @@ from kivy.graphics import Color, Rectangle
 from kivy.utils import platform
 from kivy.clock import Clock
 from kivy.metrics import dp, sp
-
+from kivy.properties import StringProperty 
 # ========== هندلر خطا ==========
 def exception_handler(exc_type, exc_value, exc_tb):
     error_msg = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
@@ -269,12 +269,11 @@ if platform != 'android':
     Window.size = (400, 650)
     
 # ========== ایمپورت ماژول‌های برنامه ==========
-# ========== ایمپورت ماژول‌های برنامه ==========
 try:
     from utils.rtl_widgets import RTLTextInput, RTLSpinner, PersianComboBox, PersianButton, RTLLabel
     from utils.persian_text import PersianLabel
     from utils.text_helper import f
-    from utils.storage import get_data_path, init_data_path  # ✅ اضافه شد
+    from utils.storage import get_data_path, init_data_path
     from utils.file_manager import (
         get_agents, add_agent, delete_agent,
         get_routes, add_route, delete_route,
@@ -343,25 +342,25 @@ class LoginScreen(Screen):
             # ========== فاصله ۱ سانت ==========
             layout.add_widget(Label(size_hint_y=None, height=dp(10)))
             
-            # ========== فیلد نام کاربری (ارتفاع ۱ سانت = ۴۰px) ==========
+            # ========== فیلد نام کاربری ==========
             self.username = RTLTextInput(
                 hint_text='نام کاربری',
                 size_hint_y=None,
-                height=dp(40),
-                font_size=sp(72)
+                height=dp(50),
+                font_size=sp(36)
             )
             layout.add_widget(self.username)
             
             # ========== فاصله ۲ میلیمتر ==========
             layout.add_widget(Label(size_hint_y=None, height=dp(2)))
             
-            # ========== فیلد رمز عبور (ارتفاع ۱ سانت) ==========
+            # ========== فیلد رمز عبور ==========
             self.password = RTLTextInput(
                 hint_text='رمز عبور',
                 password=True,
                 size_hint_y=None,
-                height=dp(40),
-                font_size=sp(72)
+                height=dp(50),
+                font_size=sp(36)
             )
             layout.add_widget(self.password)
             
@@ -884,24 +883,24 @@ class AdminSettingsScreen(Screen):
             
             content.add_widget(Label(size_hint_y=None, height=dp(5)))
             
-            # ✅ استفاده از PersianComboBox
-            role_spinner = PersianComboBox(
+            # ✅ استفاده از PersianComboBox و ذخیره در self
+            self.role_spinner = PersianComboBox(
                 text='مدیر',
                 values=roles,
                 height=dp(45)
             )
-            content.add_widget(role_spinner)
+            content.add_widget(self.role_spinner)
             
             content.add_widget(Label(size_hint_y=None, height=dp(2)))
             
-            name_input = RTLTextInput(
+            self.code_name_input = RTLTextInput(
                 hint_text='نام و نام خانوادگی',
                 multiline=False,
                 size_hint_y=None,
-                height=dp(45),
+                height=dp(50),
                 font_size=sp(36)
             )
-            content.add_widget(name_input)
+            content.add_widget(self.code_name_input)
             
             create_btn = PersianButton(
                 text='ساخت کد',
@@ -913,8 +912,17 @@ class AdminSettingsScreen(Screen):
             
             def do_create(instance):
                 try:
-                    code = create_code(role_spinner.text, name_input.text)
+                    # ✅ گرفتن نقش درست از کمبوباکس
+                    selected_role = self.role_spinner.text
+                    name = self.code_name_input.text
+                    
+                    if not name:
+                        self.show_message('خطا', 'لطفاً نام و نام خانوادگی را وارد کنید')
+                        return
+                    
+                    code = create_code(selected_role, name)
                     self.show_message('موفق', f'کد ساخته شد:\n{code}')
+                    self.code_name_input.text = ''
                     self.switch_tab(1)
                 except Exception as e:
                     error_details = traceback.format_exc()
@@ -1133,9 +1141,9 @@ class AdminScreen(Screen):
             )
             content.add_widget(phone_input)
             
-            # ✅ تغییر: استفاده از PersianSpinner
+            # ✅ استفاده از PersianComboBox
             role_spinner = PersianComboBox(
-                text='مدیر',
+                text=ROLES[0],
                 values=ROLES,
                 size_hint_y=None,
                 height=dp(50)
@@ -1414,7 +1422,6 @@ class AdminScreen(Screen):
         try:
             self.routes_content.clear_widgets()
             
-            # ✅ یک BoxLayout ساده
             layout = BoxLayout(
                 orientation='vertical',
                 padding=dp(15),
@@ -1425,7 +1432,7 @@ class AdminScreen(Screen):
             title_label = PersianLabel(
                 text='📎 ورود مسیرها از فایل Excel',
                 font_size=sp(18),
-                color=(255, 255, 255, 255),  # سفید
+                color=(255, 255, 255, 255),
                 size_hint_y=None,
                 height=dp(40),
                 halign='right'
@@ -1436,21 +1443,19 @@ class AdminScreen(Screen):
             info_label = PersianLabel(
                 text='فرمت فایل اکسل: ستون اول نام مسیر',
                 font_size=sp(14),
-                color=(200, 200, 200, 255),  # خاکستری روشن
+                color=(200, 200, 200, 255),
                 size_hint_y=None,
                 height=dp(35),
                 halign='right'
             )
             layout.add_widget(info_label)
             
-            # ✅ FilePicker بدون background_color
             self.routes_file_picker = FilePicker(
                 size_hint_y=None,
                 height=dp(100)
             )
             layout.add_widget(self.routes_file_picker)
             
-            # ✅ دکمه با PersianButton
             import_btn = PersianButton(
                 text='ورود به سیستم',
                 background_color=(0.2, 0.7, 0.2, 1),
@@ -1554,7 +1559,7 @@ class AdminScreen(Screen):
             ))
             routes = get_routes()
             route_names = [r.get('name', '') for r in routes] if routes else ['']
-            self.customer_route_spinner = RTLSpinner(
+            self.customer_route_spinner = PersianComboBox(
                 text=route_names[0] if route_names else '',
                 values=route_names,
                 size_hint_y=None,
@@ -1739,7 +1744,6 @@ class AdminScreen(Screen):
         try:
             self.customers_content.clear_widgets()
             
-            # ✅ یک BoxLayout ساده
             layout = BoxLayout(
                 orientation='vertical',
                 padding=dp(15),
@@ -1750,7 +1754,7 @@ class AdminScreen(Screen):
             title_label = PersianLabel(
                 text='📎 ورود مشتریان از فایل Excel',
                 font_size=sp(18),
-                color=(255, 255, 255, 255),  # سفید
+                color=(255, 255, 255, 255),
                 size_hint_y=None,
                 height=dp(40),
                 halign='right'
@@ -1761,21 +1765,19 @@ class AdminScreen(Screen):
             info_label = PersianLabel(
                 text='فرمت فایل اکسل: name, store_name, route_name, mobile, address',
                 font_size=sp(14),
-                color=(200, 200, 200, 255),  # خاکستری روشن
+                color=(200, 200, 200, 255),
                 size_hint_y=None,
                 height=dp(35),
                 halign='right'
             )
             layout.add_widget(info_label)
             
-            # ✅ FilePicker بدون background_color
             self.customers_file_picker = FilePicker(
                 size_hint_y=None,
                 height=dp(100)
             )
             layout.add_widget(self.customers_file_picker)
             
-            # ✅ دکمه با PersianButton
             import_btn = PersianButton(
                 text='ورود به سیستم',
                 background_color=(0.2, 0.7, 0.2, 1),
@@ -1962,7 +1964,11 @@ class AdminScreen(Screen):
     def logout(self, instance):
         self.manager.current = 'login'
 
+from kivy.uix.label import Label  # ✅ اضافه کن
+
 class UserScreen(Screen):
+    route_count = StringProperty('0') 
+    
     def __init__(self, **kwargs):
         try:
             super().__init__(**kwargs)
@@ -1978,9 +1984,6 @@ class UserScreen(Screen):
         try:
             layout = BoxLayout(orientation='vertical', padding=[dp(5), dp(5), dp(5), dp(5)])
             
-            # ❌ هدر حذف شد
-            
-            # ========== فرم ==========
             self.form_layout = GridLayout(
                 cols=3,
                 spacing=dp(4),
@@ -2034,8 +2037,8 @@ class UserScreen(Screen):
                 text=get_today_jalali(),
                 multiline=False,
                 size_hint_y=None,
-                height=dp(40),
-                font_size=sp(32)  # ✅ بزرگتر
+                height=dp(50),
+                font_size=sp(42)
             )
             self.form_layout.add_widget(visit_date)
             self.form_layout.add_widget(RTLLabel(
@@ -2043,7 +2046,7 @@ class UserScreen(Screen):
                 size_hint_y=None,
                 height=dp(35),
                 color=(0.5, 0.5, 0.5, 1),
-                font_size=sp(14)
+                font_size=sp(22)
             ))
             self.inputs['visit_date'] = visit_date
             
@@ -2054,33 +2057,35 @@ class UserScreen(Screen):
                 height=dp(35),
                 font_size=sp(14)
             ))
-            
-            # ✅ PersianComboBox با رنگ‌های مشخص
+
             self.route_spinner = PersianComboBox(
                 text=self.route_names[0] if self.route_names else '',
                 values=self.route_names,
-                height=dp(40)
+                height=dp(50)
             )
-            # تنظیم رنگ دکمه اصلی
-            self.route_spinner.main_btn.background_color = (1, 1, 1, 1)  # سفید
-            self.route_spinner.main_btn.color = (0, 0, 0, 1)  # ✅ متن مشکی
-            self.route_spinner.main_btn.font_size = sp(18)  # ✅ فونت بزرگ
-            
+            self.route_spinner.main_btn.background_color = (1, 1, 1, 1)
+            self.route_spinner.main_btn.color = (0, 0, 0, 1)
+            self.route_spinner.main_btn.font_size = sp(18)
             self.form_layout.add_widget(self.route_spinner)
-            
-            self.route_customers_target = RTLLabel(
-                text='0',
+
+            # ✅ تغییر: استفاده از Label به جای RTLLabel
+            from kivy.uix.label import Label
+            self.route_customers_target = Label(
+                text=self.route_count,
                 size_hint_y=None,
                 height=dp(35),
-                color=(0.6, 0.4, 0.2, 1),
-                font_size=sp(14)
+                color=(1, 0.8, 0.2, 1),  # زرد طلایی
+                font_size=sp(24),
+                font_name='PersianFont',
+                halign='center',
+                valign='middle'
             )
             self.form_layout.add_widget(self.route_customers_target)
+            
             self.inputs['route_name'] = self.route_spinner
             
-            # ✅ نظارت بر تغییرات مسیر با Clock
             self._last_route_text = self.route_spinner.text
-            Clock.schedule_interval(self._check_route_change, 0.3)
+            Clock.schedule_interval(self._check_route_change, 0.5)
             
             # ========== ساعت شروع کار ==========
             self.form_layout.add_widget(RTLLabel(
@@ -2093,15 +2098,15 @@ class UserScreen(Screen):
                 text=get_current_time(),
                 multiline=False,
                 size_hint_y=None,
-                height=dp(40),
-                font_size=sp(32)
+                height=dp(50),
+                font_size=sp(36)
             )
             self.form_layout.add_widget(clock_in)
             self.form_layout.add_widget(RTLLabel(
                 text=self.settings.get('work_start_time', '08:00'),
                 size_hint_y=None,
                 height=dp(35),
-                color=(0.6, 0.4, 0.2, 1),
+                color=(255, 255, 255, 255),
                 font_size=sp(14)
             ))
             self.inputs['clock_in'] = clock_in
@@ -2117,15 +2122,15 @@ class UserScreen(Screen):
                 text='',
                 multiline=False,
                 size_hint_y=None,
-                height=dp(40),
-                font_size=sp(32)
+                height=dp(50),
+                font_size=sp(36)
             )
             self.form_layout.add_widget(first_visit_time)
             self.form_layout.add_widget(RTLLabel(
                 text=self.settings.get('first_visit_time', '09:00'),
                 size_hint_y=None,
                 height=dp(35),
-                color=(0.6, 0.4, 0.2, 1),
+                color=(255, 255, 255, 255),
                 font_size=sp(14)
             ))
             self.inputs['first_visit_time'] = first_visit_time
@@ -2137,29 +2142,28 @@ class UserScreen(Screen):
                 height=dp(35),
                 font_size=sp(14)
             ))
-            
-            # ✅ PersianComboBox با رنگ‌های مشخص
+
             self.first_customer_spinner = PersianComboBox(
                 text='',
-                values=self.all_customer_names,
-                height=dp(40)
+                values=[''],
+                height=dp(60)
             )
-            # تنظیم رنگ دکمه اصلی
-            self.first_customer_spinner.main_btn.background_color = (1, 1, 1, 1)  # سفید
-            self.first_customer_spinner.main_btn.color = (0, 0, 0, 1)  # ✅ متن مشکی
-            self.first_customer_spinner.main_btn.font_size = sp(18)  # ✅ فونت بزرگ
-            
+            self.first_customer_spinner.main_btn.background_color = (1, 1, 1, 1)
+            self.first_customer_spinner.main_btn.color = (0, 0, 0, 1)
+            self.first_customer_spinner.main_btn.font_size = sp(14)
             self.form_layout.add_widget(self.first_customer_spinner)
-            
-            self.first_customer_target = RTLLabel(
-                text=self.settings.get('first_customer_of_route', 'تعیین نشده'),
+
+            self.first_customer_target = RTLTextInput(
+                text='',
+                multiline=False,
                 size_hint_y=None,
-                height=dp(35),
-                color=(0.6, 0.4, 0.2, 1),
-                font_size=sp(14)
+                height=dp(45),
+                font_size=sp(14),
+                hint_text='نام مشتری'
             )
             self.form_layout.add_widget(self.first_customer_target)
-            self.inputs['first_customer'] = self.first_customer_spinner
+
+            self.inputs['first_customer'] = self.first_customer_target
             
             # ========== تعداد مشتری ویزیت شده ==========
             self.form_layout.add_widget(RTLLabel(
@@ -2172,9 +2176,9 @@ class UserScreen(Screen):
                 text='0',
                 multiline=False,
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(50),
                 input_filter='int',
-                font_size=sp(32)
+                font_size=sp(36)
             )
             self.form_layout.add_widget(visited_count)
             
@@ -2182,7 +2186,7 @@ class UserScreen(Screen):
                 text='0',
                 size_hint_y=None,
                 height=dp(35),
-                color=(0.6, 0.4, 0.2, 1),
+                color=(255, 255, 255, 255),
                 font_size=sp(14)
             )
             self.form_layout.add_widget(self.visited_customers_target)
@@ -2199,16 +2203,16 @@ class UserScreen(Screen):
                 text='0',
                 multiline=False,
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(50),
                 input_filter='int',
-                font_size=sp(32)
+                font_size=sp(36)
             )
             self.form_layout.add_widget(invoices_count)
             self.form_layout.add_widget(RTLLabel(
                 text=str(self.settings.get('target_invoice_count', '20')),
                 size_hint_y=None,
                 height=dp(35),
-                color=(0.6, 0.4, 0.2, 1),
+                color=(255, 255, 255, 255),
                 font_size=sp(14)
             ))
             self.inputs['successful_invoices_count'] = invoices_count
@@ -2224,16 +2228,16 @@ class UserScreen(Screen):
                 text='0',
                 multiline=False,
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(50),
                 input_filter='int',
-                font_size=sp(32)
+                font_size=sp(36)
             )
             self.form_layout.add_widget(units_count)
             self.form_layout.add_widget(RTLLabel(
                 text=str(self.settings.get('target_count', '100')),
                 size_hint_y=None,
                 height=dp(35),
-                color=(0.6, 0.4, 0.2, 1),
+                color=(255, 255, 255, 255),
                 font_size=sp(14)
             ))
             self.inputs['successful_units_count'] = units_count
@@ -2249,9 +2253,9 @@ class UserScreen(Screen):
                 text='0',
                 multiline=False,
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(50),
                 input_filter='int',
-                font_size=sp(32)
+                font_size=sp(36)
             )
             self.form_layout.add_widget(sales_amount)
             
@@ -2264,7 +2268,7 @@ class UserScreen(Screen):
                 text="{:,}".format(target_amount),
                 size_hint_y=None,
                 height=dp(35),
-                color=(0.6, 0.4, 0.2, 1),
+                color=(255, 255, 255, 255),
                 font_size=sp(14)
             ))
             self.inputs['successful_sales_amount'] = sales_amount
@@ -2280,8 +2284,8 @@ class UserScreen(Screen):
                 text='',
                 multiline=False,
                 size_hint_y=None,
-                height=dp(40),
-                font_size=sp(32)
+                height=dp(50),
+                font_size=sp(36)
             )
             self.form_layout.add_widget(last_visit_time)
             self.form_layout.add_widget(RTLLabel(
@@ -2304,8 +2308,8 @@ class UserScreen(Screen):
                 text='',
                 multiline=False,
                 size_hint_y=None,
-                height=dp(40),
-                font_size=sp(32)
+                height=dp(50),
+                font_size=sp(36)
             )
             self.form_layout.add_widget(clock_out)
             self.form_layout.add_widget(RTLLabel(
@@ -2360,56 +2364,72 @@ class UserScreen(Screen):
             layout.add_widget(btn_layout)
             self.add_widget(layout)
             
-            self.update_route_info()
+            Clock.schedule_once(lambda dt: self.update_route_info(), 0.5)
         except Exception as e:
             error_details = traceback.format_exc()
             ErrorPopup.show_error(f"خطا در ساخت UI UserScreen: {e}", error_details)
             raise
     
     def _check_route_change(self, dt):
-        """بررسی تغییرات مسیر با Clock"""
         if hasattr(self, 'route_spinner'):
             current_text = self.route_spinner.text
             if current_text != self._last_route_text:
                 self._last_route_text = current_text
-                self.on_route_change(self.route_spinner, current_text)
-    
-    def on_route_change(self, spinner, text):
-        """وقتی مسیر تغییر میکنه"""
-        self.update_route_info()
+                self.update_route_info()
     
     def update_route_info(self):
-        """به‌روزرسانی اطلاعات مسیر"""
         try:
             current_route = self.route_spinner.text
             
-            if current_route:
+            if current_route and current_route not in ['', '⚠️ مسیری انتخاب نشده']:
                 customers = get_customers()
-                total_customers = len([c for c in customers if c.get('route_name') == current_route])
-                self.route_customers_target.text = str(total_customers)
                 
-                supervision_rate = self.settings.get('supervision_rate', 0.3)
-                target_visits = int(total_customers * supervision_rate)
-                self.visited_customers_target.text = str(target_visits)
+                total_customers = 0
+                filtered_customers = []
                 
-                first_customer_target = self.settings.get('first_customer_of_route', 'تعیین نشده')
-                self.first_customer_target.text = first_customer_target
+                for c in customers:
+                    route_name = c.get('route_name', '').strip()
+                    if route_name == current_route.strip():
+                        total_customers += 1
+                        filtered_customers.append(c.get('name', ''))
                 
-                filtered_customers = [c.get('name', '') for c in customers if c.get('route_name') == current_route]
-                self.first_customer_spinner.values = filtered_customers if filtered_customers else ['']
-                if filtered_customers:
-                    self.first_customer_spinner.text = filtered_customers[0]
+                # ✅ آپدیت با Clock برای اطمینان
+                Clock.schedule_once(lambda dt: self._update_ui(str(total_customers), filtered_customers), 0)
+                
             else:
-                self.route_customers_target.text = '0'
-                self.visited_customers_target.text = '0'
-                self.first_customer_spinner.values = ['']
-                self.first_customer_spinner.text = ''
+                Clock.schedule_once(lambda dt: self._update_ui('0', []), 0)
+                
         except Exception as e:
             error_details = traceback.format_exc()
             ErrorPopup.show_error(f"خطا در بروزرسانی اطلاعات مسیر: {e}", error_details)
-    
-    def on_route_change(self, spinner, text):
-        self.update_route_info()
+
+    def _update_ui(self, count, customers_list):
+        """آپدیت امن UI در ترد اصلی"""
+        try:
+            # آپدیت تعداد مشتریان
+            self.route_count = count
+            self.route_customers_target.text = count
+            
+            # آپدیت کمبوباکس اولین مشتری
+            if customers_list:
+                self.first_customer_spinner.values = customers_list
+                self.first_customer_spinner.text = customers_list[0]
+            else:
+                self.first_customer_spinner.values = ['⚠️ مشتری‌ای یافت نشد']
+                self.first_customer_spinner.text = '⚠️ مشتری‌ای یافت نشد'
+            
+            # آپدیت مشتری هدف
+            first_customer_target = self.settings.get('first_customer_of_route', '')
+            self.first_customer_target.text = first_customer_target
+            
+            # آپدیت تعداد ویزیت هدف
+            supervision_rate = self.settings.get('supervision_rate', 0.3)
+            target_visits = int(int(count) * supervision_rate)
+            self.visited_customers_target.text = str(target_visits)
+            
+        except Exception as e:
+            error_details = traceback.format_exc()
+            ErrorPopup.show_error(f"خطا در آپدیت UI: {e}", error_details)
     
     def save_log(self, instance):
         try:
@@ -2417,7 +2437,12 @@ class UserScreen(Screen):
             for key, input_field in self.inputs.items():
                 log_data[key] = input_field.text
             
-            if not log_data['visit_date']:
+            if 'route_name' in self.inputs:
+                log_data['route_name'] = self.inputs['route_name'].text
+            if 'first_customer' in self.inputs:
+                log_data['first_customer'] = self.inputs['first_customer'].text
+            
+            if not log_data.get('visit_date'):
                 self.show_message('خطا', 'تاریخ ویزیت الزامی است')
                 return
             
@@ -2427,7 +2452,7 @@ class UserScreen(Screen):
             
             all_logs = get_daily_logs()
             
-            if log_data['visit_date'] in all_logs:
+            if log_data.get('visit_date') in all_logs:
                 content = BoxLayout(orientation='vertical', padding=dp(20), spacing=dp(15))
                 content.add_widget(RTLLabel(
                     text='ویزیتی با این تاریخ قبلاً ثبت شده است. آیا می‌خواهید جایگزین شود؟',
@@ -2785,7 +2810,7 @@ class SettingsLoginScreen(Screen):
                 password=True,
                 multiline=False,
                 size_hint_y=None,
-                height=dp(40),
+                height=dp(50),
                 font_size=sp(36)
             )
             layout.add_widget(self.password_input)
