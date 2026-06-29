@@ -62,9 +62,15 @@ jobs:
         source.dir = .
         source.include_exts = py,png,jpg,kv,atlas,ttf,json
         version = 0.1
-        requirements = python3,kivy,openpyxl,jdatetime,arabic-reshaper,python-bidi,requests,Pillow
+
+        # ✅ اضافه کردن plyer و حذف jdatetime
+        requirements = python3,kivy,openpyxl,plyer,arabic-reshaper,python-bidi,requests,Pillow
+
         orientation = portrait
-        fullscreen = 0
+        fullscreen = 1
+
+        # ✅ تنظیمات فونت
+        android.add_src = fonts/
 
         [buildozer]
         log_level = 2
@@ -77,30 +83,81 @@ jobs:
         android.minapi = 21
         android.ndk = 25b
         android.archs = armeabi-v7a, arm64-v8a
-        android.permissions = INTERNET
+        android.permissions = INTERNET, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
         android.enable_androidx = True
         android.allow_backup = True
         android.unsafe_ssl = False
         android.presplash_color = #FFFFFF
         android.ignore_manifest = False
+        android.enable_on_back_invoked_callback = True
 
         android.debug = 0
         android.release = 1
         EOF
 
-    - name: Copy fonts to build directory
+    - name: Create initial json files
       run: |
-        echo "📁 بررسی فایل‌های fonts قبل از کپی:"
-        ls -la fonts/ || echo "پوشه fonts وجود ندارد"
+        # ✅ ایجاد فایل‌های JSON اولیه برای برنامه
+        mkdir -p data
         
-        echo "📁 ایجاد پوشه fonts در مسیر build..."
+        cat > data/definitions.json << 'EOF'
+        {
+          "agents": [],
+          "routes": [],
+          "customers": []
+        }
+        EOF
+        
+        cat > data/settings.json << 'EOF'
+        {
+          "supervision_rate": 0.3,
+          "conversion_rate": 0.25,
+          "avg_invoice_amount": 1000000,
+          "target_amount": 50000000,
+          "target_count": 100,
+          "target_invoice_count": 20,
+          "target_customer_count": 50,
+          "target_new_customer_count": 10,
+          "target_cash_sales": 30000000,
+          "target_credit_sales": 20000000,
+          "work_start_time": "08:00",
+          "first_visit_time": "09:00",
+          "min_daily_hours": 6
+        }
+        EOF
+        
+        cat > data/users.json << 'EOF'
+        {
+          "users": []
+        }
+        EOF
+        
+        cat > data/codes.json << 'EOF'
+        {
+          "codes": []
+        }
+        EOF
+
+    - name: Copy fonts and data to build directory
+      run: |
+        echo "📁 بررسی فایل‌ها قبل از کپی:"
+        ls -la fonts/ || echo "⚠️ پوشه fonts وجود ندارد"
+        
+        # ✅ کپی فونت‌ها به مسیر درست
         mkdir -p .buildozer/android/app/fonts
+        mkdir -p .buildozer/android/app/data
         
-        echo "📁 کپی فایل‌های فونت..."
+        echo "📁 کپی فونت‌ها..."
         cp -v fonts/*.ttf .buildozer/android/app/fonts/ 2>/dev/null || echo "⚠️ خطا در کپی فونت‌ها"
+        
+        echo "📁 کپی فایل‌های داده..."
+        cp -v data/*.json .buildozer/android/app/data/ 2>/dev/null || echo "⚠️ خطا در کپی داده‌ها"
         
         echo "📁 بررسی فونت‌های کپی شده:"
         ls -la .buildozer/android/app/fonts/ || echo "⚠️ پوشه fonts خالی است"
+        
+        echo "📁 بررسی داده‌های کپی شده:"
+        ls -la .buildozer/android/app/data/ || echo "⚠️ پوشه data خالی است"
 
     - name: Build with Buildozer
       run: |
