@@ -1,4 +1,4 @@
-"""
+﻿"""
 ویجت‌های RTL برای پشتیبانی از متن فارسی
 """
 
@@ -8,7 +8,7 @@ from kivy.uix.dropdown import DropDown
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.metrics import dp, sp
-from kivy.graphics import Color, RoundedRectangle
+from kivy.graphics import Color, RoundedRectangle, Rectangle 
 from kivy.clock import Clock
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
@@ -35,14 +35,15 @@ class RTLTextInput(BoxLayout):
         self._font_size = kwargs.pop('font_size', sp(36))
         self._input_filter = kwargs.pop('input_filter', None)
         
-        height = kwargs.pop('height', dp(40))
+        # ✅ تغییر height به 60 (حدود 2.2 سانت)
+        height = kwargs.pop('height', dp(90))
         
         super().__init__(**kwargs)
         
         self.orientation = 'vertical'
         self.size_hint_y = None
         self.height = height
-        self.padding = dp(6)
+        self.padding = dp(3)  # ✅ افزایش padding برای جا دادن متن
         
         self.bg_color = (1, 1, 1, 1)
         self.border_color = (0.7, 0.7, 0.7, 1)
@@ -53,13 +54,13 @@ class RTLTextInput(BoxLayout):
             self.bg_rect = RoundedRectangle(
                 pos=self.pos,
                 size=self.size,
-                radius=[dp(6)]
+                radius=[dp(3)]
             )
             Color(*self.border_color)
             self.border_rect = RoundedRectangle(
-                pos=(self.x + 1, self.y + 1),
-                size=(self.width - 2, self.height - 2),
-                radius=[dp(5)]
+                pos=(self.x + 2, self.y + 2),
+                size=(self.width - 4, self.height - 4),
+                radius=[dp(3)]
             )
         
         self.bind(pos=self._update_rect, size=self._update_rect)
@@ -77,7 +78,8 @@ class RTLTextInput(BoxLayout):
             foreground_color=(0, 0, 0, 1),
             cursor_color=(0.2, 0.5, 0.8, 1),
             halign='right',
-            font_name='PersianFont'
+            font_name='PersianFont',
+            padding=[dp(10), dp(8), dp(10), dp(8)]  # ✅ افزایش padding داخلی
         )
         self._hidden_input.bind(text=self._on_text_change)
         self._hidden_input.bind(focus=self._on_focus)
@@ -92,12 +94,13 @@ class RTLTextInput(BoxLayout):
             font_size=self._font_size,
             color=color_rgb,
             size_hint=(1, 1),
-            halign='right'
+            halign='right',
+            valign='middle'  # ✅ وسط‌چین برای نمایش بهتر
         )
         
         self.add_widget(self.label)
         self.add_widget(self._hidden_input)
-    
+   
     def _update_rect(self, instance, value):
         self.bg_rect.pos = self.pos
         self.bg_rect.size = self.size
@@ -437,13 +440,15 @@ class PersianComboBox(BoxLayout):
 # ============================================================
 
 class RTLLabel(PersianLabel):
-    """RTLLabel - با تبدیل درست رنگ"""
+    """RTLLabel - با تبدیل درست رنگ و پشتیبانی از text_size"""
     def __init__(self, **kwargs):
+        # ✅ برداشتن text_size برای ارسال به PersianLabel
+        self._text_size = kwargs.pop('text_size', None)
+        
         kwargs.pop('bold', None)
         kwargs.pop('markup', None)
         kwargs.pop('halign', None)
         kwargs.pop('valign', None)
-        kwargs.pop('text_size', None)
         kwargs.pop('font_name', None)
         kwargs.pop('size_hint_x', None)
         kwargs.pop('size_hint_y', None)
@@ -458,13 +463,19 @@ class RTLLabel(PersianLabel):
             color = (0, 0, 0, 255)
         
         super().__init__(text=text, font_size=font_size, color=color, **kwargs)
+        
+        # ✅ اگر text_size داده شده، اعمال کن
+        if self._text_size:
+            self.text_size = self._text_size
+            self.halign = 'right'
+            self.valign = 'top'
 
 
 class PersianButton(Button):
     """دکمه با پشتیبانی از متن فارسی"""
     def __init__(self, **kwargs):
         text = kwargs.pop('text', '')
-        font_size = kwargs.pop('font_size', sp(22))
+        font_size = kwargs.pop('font_size', sp(20))
         
         kwargs.pop('font_name', None)
         kwargs.pop('halign', None)
@@ -480,7 +491,9 @@ class PersianButton(Button):
             font_size=font_size,
             color=(255, 255, 255, 255),
             size_hint=(1, 1),
-            halign='center'
+            halign='center',
+            valign='middle'
+
         )
         self.add_widget(self.label)
         self.bind(size=self._update_label, pos=self._update_label)
@@ -491,4 +504,52 @@ class PersianButton(Button):
         self.label.pos = self.pos
     
     def set_text(self, text):
+        self.label.set_text(text)
+
+# ============================================================
+# ✅ RTLMessageLabel - برای نمایش پیام‌های بزرگ و خوانا
+# ============================================================
+
+class RTLMessageLabel(BoxLayout):
+    """لیبل مخصوص نمایش پیام‌های بزرگ با قابلیت اسکرول"""
+    
+    def __init__(self, **kwargs):
+        self._text = kwargs.pop('text', '')
+        self._font_size = kwargs.pop('font_size', sp(24))
+        self._color = kwargs.pop('color', (1, 1, 1, 1))
+        self._height = kwargs.pop('height', dp(300))
+        
+        super().__init__(**kwargs)
+        
+        self.orientation = 'vertical'
+        self.size_hint_y = None
+        self.height = self._height
+        self.padding = dp(10)
+        
+        # ✅ ScrollView
+        self.scroll = ScrollView(
+            do_scroll_x=False,
+            do_scroll_y=True,
+            size_hint=(1, 1),
+            bar_width=dp(6),
+            scroll_type=['bars', 'content']
+        )
+        
+        # ✅ استفاده از PersianLabel
+        color_rgb = tuple(int(c * 255) if c <= 1 else int(c) for c in self._color)
+        
+        self.label = PersianLabel(
+            text=self._text,
+            font_size=self._font_size,
+            color=color_rgb,
+            size_hint_y=None,
+            height=self._height
+        )
+        
+        self.scroll.add_widget(self.label)
+        self.add_widget(self.scroll)
+    
+    def set_text(self, text):
+        """تغییر متن"""
+        self._text = text
         self.label.set_text(text)
